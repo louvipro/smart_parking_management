@@ -13,11 +13,11 @@ x-common-environment:
   STREAMLIT_PORT: ${STREAMLIT_PORT:-8501}
 
 services:
-  parking-app:
+  smart-parking-app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: parking-management-system
+    container_name: smart_parking_management
     ports:
       - "8501:8501"
       - "8080:8080"

@@ -1,4 +1,4 @@
-site_name: Generative AI Project Template
+site_name: smart_parking_management
 site_description: Documentation
 site_author: Amine Djeghri
 docs_dir: .
@@ -7,9 +7,7 @@ docs_dir: .
 #repo_url:
 #edit_uri: blob/main/docs/
 
-
 theme:
-
   name: "material" # https://squidfunk.github.io/mkdocs-material/getting-started/
   language: en
   features: # https://squidfunk.github.io/mkdocs-material/setup/
