@@ -23,6 +23,7 @@ services:
       - "8080:8080"
     environment:
       <<: *common-environment
+      UV_HTTP_TIMEOUT: 120
     volumes:
       - parking-data:/data
     depends_on:
