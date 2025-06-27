@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm:*)",
+      "Bash(mkdir:*)",
+      "Bash(make:*)",
+      "Bash(ls:*)",
+      "Bash(python:*)",
+      "Bash(~/.local/bin/uv run:*)",
+      "Bash(find:*)",
+      "Bash(sqlite3:*)"
+    ],
+    "deny": []
+  }
+}

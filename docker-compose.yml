@@ -1,0 +1,53 @@
+version: '3.8'
+
+x-common-environment:
+  &common-environment
+  DEV_MODE: ${DEV_MODE:-True}
+  DATABASE_URL: ${DATABASE_URL:-sqlite:///./parking.db}
+  ASYNC_DATABASE_URL: ${ASYNC_DATABASE_URL:-sqlite+aiosqlite:///./parking.db}
+  OPENAI_API_BASE: ${OPENAI_API_BASE:-http://ollama:11434/v1}
+  OPENAI_MODEL_NAME: ${OPENAI_MODEL_NAME:-ollama/qwen2.5:0.5b}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-111111111111111111111111111111111111111111111111}
+  FASTAPI_HOST: 0.0.0.0
+  FASTAPI_PORT: ${FASTAPI_PORT:-8080}
+  STREAMLIT_PORT: ${STREAMLIT_PORT:-8501}
+
+services:
+  parking-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: parking-management-system
+    ports:
+      - "8501:8501"
+      - "8080:8080"
+    environment:
+      <<: *common-environment
+    volumes:
+      - parking-data:/data
+    depends_on:
+      - ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    tty: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  parking-data:
+  ollama-data:
