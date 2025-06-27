@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 from enum import Enum
@@ -20,8 +20,8 @@ class VehicleBase(BaseModel):
     color: str = Field(..., min_length=1, max_length=50)
     brand: str = Field(..., min_length=1, max_length=50)
 
-    @validator('license_plate')
-    def validate_license_plate(cls, v):
+    @field_validator('license_plate')
+    def validate_license_plate(cls, v):  # pylint: disable=no-self-argument
         return v.upper().strip()
 
 
@@ -33,8 +33,7 @@ class VehicleResponse(VehicleBase):
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ParkingSpotBase(BaseModel):
@@ -47,8 +46,7 @@ class ParkingSpotResponse(ParkingSpotBase):
     id: int
     is_occupied: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VehicleEntry(BaseModel):
@@ -57,16 +55,16 @@ class VehicleEntry(BaseModel):
     brand: str = Field(..., min_length=1, max_length=50)
     spot_type: Optional[SpotType] = SpotType.REGULAR
 
-    @validator('license_plate')
-    def validate_license_plate(cls, v):
+    @field_validator('license_plate')
+    def validate_license_plate(cls, v):  # pylint: disable=no-self-argument
         return v.upper().strip()
 
 
 class VehicleExit(BaseModel):
     license_plate: str = Field(..., min_length=1, max_length=20)
 
-    @validator('license_plate')
-    def validate_license_plate(cls, v):
+    @field_validator('license_plate')
+    def validate_license_plate(cls, v):  # pylint: disable=no-self-argument
         return v.upper().strip()
 
 
@@ -89,8 +87,7 @@ class ParkingSessionResponse(ParkingSessionBase):
     vehicle: VehicleResponse
     parking_spot: ParkingSpotResponse
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaymentInfo(BaseModel):

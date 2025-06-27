@@ -23,6 +23,7 @@ RUN apt autoclean -y
 
 # Set environment variables
 ENV APP_DIR=/parking-management-system
+ENV PATH="/root/.local/bin:${PATH}"
 # Set working directory
 WORKDIR $APP_DIR
 
@@ -37,7 +38,7 @@ COPY . $APP_DIR
 RUN mkdir -p /data
 
 # Expose ports
-EXPOSE 8501 8080
+EXPOSE 8501
 
 # Default command to run both services
-CMD ["make", "run-app"]
+CMD ["make", "run-frontend"]

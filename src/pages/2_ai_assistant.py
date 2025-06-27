@@ -1,10 +1,12 @@
-import streamlit as st
+import asyncio
 from datetime import datetime
 
+import streamlit as st
+
 from database.database import AsyncSessionLocal
+from ml.parking_agent_hybrid import HybridParkingAssistant
 from services.analytics_service import AnalyticsService
 from services.parking_service import ParkingService
-from ml.parking_agent_hybrid import HybridParkingAssistant
 
 
 st.set_page_config(
@@ -52,7 +54,7 @@ for message in st.session_state.messages:
 if st.session_state.pending_query:
     query = st.session_state.pending_query
     st.session_state.pending_query = None  # Clear the pending query
-    
+
     # Get AI response
     with st.chat_message("assistant"):
         with st.spinner("🤔 Analyzing your question and checking parking data..."):
@@ -61,14 +63,17 @@ if st.session_state.pending_query:
                 import asyncio
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                response = loop.run_until_complete(st.session_state.assistant.process_query(query))
+                response = loop.run_until_complete(
+                    st.session_state.assistant.process_query(query))
                 loop.close()
                 st.markdown(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": response})
             except Exception as e:
                 error_msg = f"Sorry, I encountered an error: {str(e)}"
                 st.error(error_msg)
-                st.session_state.messages.append({"role": "assistant", "content": error_msg})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": error_msg})
 
 # Chat input
 if prompt := st.chat_input("Ask about parking..."):
@@ -76,7 +81,7 @@ if prompt := st.chat_input("Ask about parking..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
-    
+
     # Get AI response
     with st.chat_message("assistant"):
         with st.spinner("🤔 Analyzing your question and checking parking data..."):
@@ -85,19 +90,22 @@ if prompt := st.chat_input("Ask about parking..."):
                 import asyncio
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                response = loop.run_until_complete(st.session_state.assistant.process_query(prompt))
+                response = loop.run_until_complete(
+                    st.session_state.assistant.process_query(prompt))
                 loop.close()
                 st.markdown(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": response})
             except Exception as e:
                 error_msg = f"Sorry, I encountered an error: {str(e)}"
                 st.error(error_msg)
-                st.session_state.messages.append({"role": "assistant", "content": error_msg})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": error_msg})
 
 # Sidebar with example queries
 with st.sidebar:
     st.subheader("📝 Example Questions")
-    
+
     example_queries = [
         "How many cars are currently parked?",
         "How many red cars are in the parking?",
@@ -109,9 +117,10 @@ with st.sidebar:
         "How many spots are available?",
         "Show me the brand distribution"
     ]
-    
+
     for query in example_queries:
         if st.button(query, key=f"example_{query}"):
-            st.session_state.messages.append({"role": "user", "content": query})
+            st.session_state.messages.append(
+                {"role": "user", "content": query})
             st.session_state.pending_query = query
             st.rerun()

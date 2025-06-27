@@ -35,12 +35,8 @@ run-frontend:
 	@echo "Running frontend"
 	cd src; $(UV) run streamlit run main_frontend.py --server.port $(STREAMLIT_PORT) --server.headless True;
 
-run-backend:
-	@echo "Running backend"
-	cd src; $(UV) run main_backend.py;
-
 run-app:
-	make run-frontend run-backend -j2
+	make run-frontend
 
 pre-commit-install:
 	@echo "${YELLOW}=========> Installing pre-commit...${NC}"
@@ -125,11 +121,6 @@ test:
 
 test-ollama:
 	curl -X POST http://localhost:11434/api/generate -H "Content-Type: application/json" -d '{"model": "$(OLLAMA_MODEL_NAME)", "prompt": "Hello", "stream": false}'
-
-test-inference-llm:
-	# llm that generate answers (used in chat, rag and promptfoo)
-	@echo "${YELLOW}=========> Testing LLM client...${NC}"
-	@$(UV) run pytest tests/test_llm_endpoint.py -k test_inference_llm --disable-warnings
 
 
 run-langfuse:

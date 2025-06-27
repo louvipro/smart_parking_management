@@ -7,7 +7,8 @@ import os
 from database.models import Base
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./parking.db")
-ASYNC_DATABASE_URL = os.getenv("ASYNC_DATABASE_URL", "sqlite+aiosqlite:///./parking.db")
+ASYNC_DATABASE_URL = os.getenv(
+    "ASYNC_DATABASE_URL", "sqlite+aiosqlite:///./parking.db")
 
 # Ensure we're using absolute paths for SQLite
 if "sqlite" in DATABASE_URL:
@@ -16,11 +17,13 @@ if "sqlite" in DATABASE_URL:
     ASYNC_DATABASE_URL = f"sqlite+aiosqlite:///{db_path}"
 
 # Sync engine for initialization
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {})
+engine = create_engine(DATABASE_URL, connect_args={
+                       "check_same_thread": False} if "sqlite" in DATABASE_URL else {})
 
 # Async engine for application
 async_engine = create_async_engine(ASYNC_DATABASE_URL, echo=False)
-AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
+AsyncSessionLocal = async_sessionmaker(
+    async_engine, class_=AsyncSession, expire_on_commit=False)
 
 
 async def get_async_db():
@@ -33,13 +36,13 @@ async def get_async_db():
 
 def init_db():
     print(f"Initializing database at: {DATABASE_URL}")
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine, checkfirst=True)
     print("Tables created")
-    
+
     # Create initial parking spots
     from sqlalchemy.orm import Session
     from database.models import ParkingSpot
-    
+
     with Session(engine) as session:
         # Check if spots already exist
         existing_spots = session.query(ParkingSpot).count()

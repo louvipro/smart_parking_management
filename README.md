@@ -26,7 +26,6 @@ The AI-powered chatbot can answer queries like:
 
 - **Python 3.12**
 - **Streamlit** - Web framework for the dashboard
-- **FastAPI** - Backend API server
 - **CrewAI** - AI agent system for natural language queries
 - **LiteLLM** - Unified interface for multiple LLM providers
 - **SQLAlchemy** - Database ORM with async support
@@ -82,7 +81,7 @@ Option B: With OpenAI or other providers
 ```bash
 # Edit .env file and set:
 # OPENAI_API_KEY=your-api-key
-# OPENAI_MODEL_NAME=gpt-3.5-turbo
+# OPENAI_MODEL_NAME=gemma:2b
 
 # Run the application
 make run-app
@@ -91,7 +90,6 @@ make run-app
 5. **Access the application**
 
 - Streamlit UI: http://localhost:8501
-- FastAPI docs: http://localhost:8080/docs
 
 ## Docker Deployment
 
@@ -103,14 +101,14 @@ docker-compose up
 
 This will start:
 
-- Parking management system (Streamlit + FastAPI)
+- Parking management system (Streamlit)
 - Ollama for local LLM support
 
 ### Building Docker Image
 
 ```bash
 docker build -t smart_parking_management .
-docker run -p 8501:8501 -p 8080:8080 smart_parking_management
+docker run -p 8501:8501 smart_parking_management
 ```
 
 ## Usage
@@ -132,15 +130,6 @@ Use the AI Assistant to:
 - Get insights on revenue and occupancy
 - Query vehicle statistics by color or brand
 - Analyze parking patterns
-
-### 3. API Endpoints
-
-The FastAPI backend provides REST endpoints:
-
-- `POST /api/parking/entry` - Register vehicle entry
-- `POST /api/parking/exit` - Process vehicle exit
-- `GET /api/parking/status` - Get parking status
-- `GET /api/parking/analytics/*` - Various analytics endpoints
 
 ## Configuration
 
@@ -168,10 +157,9 @@ ASYNC_DATABASE_URL=postgresql+asyncpg://user:password@host:port/dbname
 ### Components
 
 1. **Frontend (Streamlit)**: User interface for parking operations and AI chat
-2. **Backend (FastAPI)**: REST API for parking management
-3. **Database (SQLAlchemy)**: Data persistence with async support
-4. **AI Agent (CrewAI)**: Natural language processing for queries using AI agents with tools
-5. **Services Layer**: Business logic for parking operations and analytics
+2. **Database (SQLAlchemy)**: Data persistence with async support
+3. **AI Agent (CrewAI)**: Natural language processing for queries using AI agents with tools
+4. **Services Layer**: Business logic for parking operations and analytics
 
 ### Data Models
 
@@ -198,8 +186,19 @@ make pre-commit  # Run linting and formatting
 1. Add models in `src/database/models.py`
 2. Create Pydantic schemas in `src/schemas/`
 3. Implement business logic in `src/services/`
-4. Add API endpoints in `src/api/routers/`
-5. Create UI components in `src/pages/`
+4. Create UI components in `src/pages/`
+
+## Development Best Practices
+
+To ensure the long-term health and maintainability of this project, all contributors should adhere to the following principles:
+
+- **Keep Documentation Updated**: Whenever you introduce a new feature, modify an existing one, or change a dependency, update the documentation to reflect your changes. Accurate documentation is crucial for collaboration and future development.
+
+- **Embrace Test-Driven Development (TDD)**: Write unit tests _before_ writing the implementation code. This practice ensures that your code is testable, reliable, and meets requirements from the start. All new features should be accompanied by corresponding tests.
+
+- **Maintain a Clean Architecture**: The project follows a service-based architecture to separate concerns. Continue to respect these boundaries by keeping business logic within the service layer, database interactions in the data layer, and UI code in the presentation layer. This makes the system easier to understand, test, and scale.
+
+- **Prioritize Robust Solutions**: Always favor idempotent, automated, and self-correcting mechanisms over manual, one-off scripts. For example, database initialization should handle pre-existing data gracefully rather than requiring a separate, manual setup command.
 
 ## License
 
