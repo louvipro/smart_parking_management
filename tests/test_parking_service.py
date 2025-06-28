@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
 from services.parking_service import ParkingService
@@ -117,6 +117,26 @@ class TestParkingServiceVehicleEntry:
         
         with pytest.raises(ValueError, match="No available .* spots"):
             await parking_service.register_vehicle_entry(entry_data)
+
+    async def test_register_vehicle_full_parking(self, parking_service, db_session, init_parking_spots):
+        """Test registering a vehicle when the parking lot is full."""
+        from sqlalchemy import update
+
+        # Mark all spots as occupied
+        await db_session.execute(
+            update(ParkingSpot).values(is_occupied=True)
+        )
+        await db_session.commit()
+
+        entry_data = VehicleEntry(
+            license_plate="FULL123",
+            color="Yellow",
+            brand="Subaru",
+            spot_type=SpotType.REGULAR
+        )
+
+        with pytest.raises(ValueError, match="No available SpotType.REGULAR spots"):
+            await parking_service.register_vehicle_entry(entry_data)
     
     async def test_register_vehicle_specific_spot_types(self, parking_service, init_parking_spots):
         """Test registering vehicles for different spot types."""
@@ -148,11 +168,11 @@ class TestParkingServiceVehicleExit:
         """Test successful vehicle exit and payment calculation."""
         from sqlalchemy import select
         
+        exit_data = VehicleExit(license_plate=parked_vehicle.vehicle.license_plate)
         # Mock exit time to be 2 hours after entry
-        with patch('services.parking_service.datetime') as mock_datetime:
-            mock_datetime.utcnow.return_value = parked_vehicle.entry_time + timedelta(hours=2)
-            
-            exit_data = VehicleExit(license_plate=parked_vehicle.vehicle.license_plate)
+        with patch('services.parking_service.datetime') as mock_dt:
+            mock_dt.now.return_value = parked_vehicle.entry_time + timedelta(hours=2)
+            mock_dt.timezone = timezone
             payment_info = await parking_service.register_vehicle_exit(exit_data)
         
         # Verify payment calculation
@@ -180,11 +200,8 @@ class TestParkingServiceVehicleExit:
     async def test_register_vehicle_exit_minimum_charge(self, parking_service, parked_vehicle):
         """Test that minimum charge is 1 hour even for shorter stays."""
         # Mock exit time to be 30 minutes after entry
-        with patch('services.parking_service.datetime') as mock_datetime:
-            mock_datetime.utcnow.return_value = parked_vehicle.entry_time + timedelta(minutes=30)
-            
-            exit_data = VehicleExit(license_plate=parked_vehicle.vehicle.license_plate)
-            payment_info = await parking_service.register_vehicle_exit(exit_data)
+        exit_data = VehicleExit(license_plate=parked_vehicle.vehicle.license_plate)
+        payment_info = await parking_service.register_vehicle_exit(exit_data)
         
         # Should charge for minimum 1 hour
         assert payment_info.duration_hours == 1.0

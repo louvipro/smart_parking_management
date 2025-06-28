@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func, Integer
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from loguru import logger
 
@@ -65,7 +65,7 @@ class ParkingService:
             session = ParkingSession(
                 vehicle_id=vehicle.id,
                 parking_spot_id=available_spot.id,
-                entry_time=datetime.utcnow()
+                entry_time=datetime.now(timezone.utc)
             )
             self.db.add(session)
             
@@ -99,8 +99,11 @@ class ParkingService:
                 raise ValueError(f"No active session for vehicle {exit_data.license_plate}")
 
             # Calculate payment
-            session.exit_time = datetime.utcnow()
-            duration_hours = (session.exit_time - session.entry_time).total_seconds() / 3600
+            session.exit_time = datetime.now(timezone.utc)
+            # Ensure both datetimes are timezone-aware before subtraction
+            entry_time_aware = session.entry_time.replace(tzinfo=timezone.utc) if session.entry_time.tzinfo is None else session.entry_time
+            exit_time_aware = session.exit_time.replace(tzinfo=timezone.utc) if session.exit_time.tzinfo is None else session.exit_time
+            duration_hours = (exit_time_aware - entry_time_aware).total_seconds() / 3600
             
             # Minimum charge for 1 hour
             duration_hours = max(1.0, duration_hours)

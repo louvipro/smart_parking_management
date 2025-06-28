@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, extract, distinct
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from typing import List, Dict
 import pandas as pd
 
@@ -13,7 +13,7 @@ class AnalyticsService:
         self.db = db
 
     async def get_revenue_last_hours(self, hours: int = 1) -> float:
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         result = await self.db.execute(
             select(func.sum(ParkingSession.amount_paid)).where(
                 and_(
@@ -44,7 +44,7 @@ class AnalyticsService:
         return result.scalar() or 0
 
     async def get_daily_average_vehicles(self, days: int = 30) -> float:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         
         # Count vehicles per day
         daily_counts = await self.db.execute(
@@ -62,7 +62,7 @@ class AnalyticsService:
         return sum(counts) / len(counts) if counts else 0.0
 
     async def get_average_daily_spending(self, days: int = 30) -> float:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         
         # Get daily revenue and unique vehicles
         daily_stats = await self.db.execute(
@@ -91,18 +91,20 @@ class AnalyticsService:
 
     async def get_average_duration_by_color(self, color: str) -> float:
         result = await self.db.execute(
-            select(
-                func.avg(
-                    func.extract('epoch', ParkingSession.exit_time - ParkingSession.entry_time) / 3600
-                )
-            ).select_from(ParkingSession).join(Vehicle).where(
+            select(ParkingSession.entry_time, ParkingSession.exit_time).select_from(ParkingSession).join(Vehicle).where(
                 and_(
                     Vehicle.color.ilike(f"%{color}%"),
                     ParkingSession.exit_time.is_not(None)
                 )
             )
         )
-        avg_hours = result.scalar()
+        durations = []
+        for entry_time, exit_time in result:
+            if entry_time and exit_time:
+                duration = (exit_time - entry_time).total_seconds() / 3600
+                durations.append(duration)
+        
+        avg_hours = sum(durations) / len(durations) if durations else 0.0
         return round(avg_hours, 2) if avg_hours else 0.0
 
     async def get_hourly_occupancy(self) -> List[Dict]:
@@ -130,11 +132,11 @@ class AnalyticsService:
         return hourly_stats
 
     async def get_revenue_by_day(self, days: int = 7) -> List[Dict]:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         
         result = await self.db.execute(
             select(
-                func.date(ParkingSession.exit_time).label('date'),
+                func.strftime('%Y-%m-%d', ParkingSession.exit_time).label('date'),
                 func.sum(ParkingSession.amount_paid).label('revenue')
             ).where(
                 and_(
@@ -142,19 +144,20 @@ class AnalyticsService:
                     ParkingSession.payment_status == PaymentStatus.PAID
                 )
             ).group_by(
-                func.date(ParkingSession.exit_time)
+                func.strftime('%Y-%m-%d', ParkingSession.exit_time)
             ).order_by(
-                func.date(ParkingSession.exit_time)
+                func.strftime('%Y-%m-%d', ParkingSession.exit_time)
             )
         )
         
-        return [
-            {
-                "date": row.date.isoformat() if row.date else None,
+        revenue_data = []
+        for row in result:
+            
+            revenue_data.append({
+                "date": datetime.strptime(row.date, '%Y-%m-%d').date().isoformat() if row.date else None,
                 "revenue": float(row.revenue) if row.revenue else 0.0
-            }
-            for row in result
-        ]
+            })
+        return revenue_data
 
     async def get_brand_distribution(self, active_only: bool = True) -> Dict[str, int]:
         """Get distribution of vehicles by brand."""
@@ -191,7 +194,7 @@ class AnalyticsService:
         current_vehicles = await self.get_current_vehicle_count()
         
         # Today's revenue
-        today_start = datetime.combine(date.today(), datetime.min.time())
+        today_start = datetime.combine(date.today(), datetime.min.time()).replace(tzinfo=timezone.utc)
         today_revenue_result = await self.db.execute(
             select(func.sum(ParkingSession.amount_paid)).where(
                 and_(
@@ -212,18 +215,19 @@ class AnalyticsService:
         
         # Average duration today
         avg_duration_result = await self.db.execute(
-            select(
-                func.avg(
-                    func.extract('epoch', ParkingSession.exit_time - ParkingSession.entry_time) / 3600
-                )
-            ).where(
+            select(ParkingSession.entry_time, ParkingSession.exit_time).where(
                 and_(
                     ParkingSession.exit_time >= today_start,
                     ParkingSession.exit_time.is_not(None)
                 )
             )
         )
-        avg_duration = avg_duration_result.scalar() or 0.0
+        durations = []
+        for entry_time, exit_time in avg_duration_result:
+            if entry_time and exit_time:
+                duration = (exit_time - entry_time).total_seconds() / 3600
+                durations.append(duration)
+        avg_duration = sum(durations) / len(durations) if durations else 0.0
         
         return {
             "current_occupancy": current_vehicles,

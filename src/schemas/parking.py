@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator, ConfigDict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from enum import Enum
 
@@ -86,6 +86,15 @@ class ParkingSessionResponse(ParkingSessionBase):
     payment_status: PaymentStatus
     vehicle: VehicleResponse
     parking_spot: ParkingSpotResponse
+
+    @field_validator('entry_time', 'exit_time')
+    @classmethod
+    def make_datetime_aware(cls, dt: datetime) -> datetime:
+        if dt is None:
+            return dt
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
 
     model_config = ConfigDict(from_attributes=True)
 

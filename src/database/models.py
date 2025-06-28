@@ -1,7 +1,8 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, ForeignKey
+from datetime import datetime, timezone
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+from .custom_types import UTCDateTime
 
 Base = declarative_base()
 
@@ -13,7 +14,7 @@ class Vehicle(Base):
     license_plate = Column(String, unique=True, index=True)
     color = Column(String, nullable=False)
     brand = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(UTCDateTime, default=lambda: datetime.now(timezone.utc))
 
     parking_sessions = relationship("ParkingSession", back_populates="vehicle")
 
@@ -36,8 +37,8 @@ class ParkingSession(Base):
     id = Column(Integer, primary_key=True, index=True)
     vehicle_id = Column(Integer, ForeignKey("vehicles.id"))
     parking_spot_id = Column(Integer, ForeignKey("parking_spots.id"))
-    entry_time = Column(DateTime, default=datetime.utcnow, nullable=False)
-    exit_time = Column(DateTime, nullable=True)
+    entry_time = Column(UTCDateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    exit_time = Column(UTCDateTime, nullable=True)
     amount_paid = Column(Float, nullable=True)
     payment_status = Column(String, default="pending")  # pending, paid
     hourly_rate = Column(Float, default=5.0)

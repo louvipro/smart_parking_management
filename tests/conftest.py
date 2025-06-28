@@ -110,7 +110,7 @@ async def sample_vehicle(db_session: AsyncSession):
 async def sample_parking_session(db_session: AsyncSession, sample_vehicle, init_parking_spots):
     """Create a sample parking session for testing."""
     from database.models import ParkingSession, ParkingSpot
-    from datetime import datetime
+    from datetime import datetime, timezone
     
     # Get the first available spot
     spot = await db_session.get(ParkingSpot, 1)
@@ -119,7 +119,7 @@ async def sample_parking_session(db_session: AsyncSession, sample_vehicle, init_
     session = ParkingSession(
         vehicle_id=sample_vehicle.id,
         parking_spot_id=spot.id,
-        entry_time=datetime.utcnow(),
+        entry_time=datetime.now(timezone.utc),
         hourly_rate=5.0
     )
     db_session.add(session)
