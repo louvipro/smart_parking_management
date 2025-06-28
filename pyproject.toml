@@ -16,7 +16,7 @@ dependencies = [
     "alembic==1.14.0",
     "aiosqlite==0.20.0",
     # backend & frontend
-    "streamlit==1.40.1",
+    "streamlit==1.46.1",
     # Engineering
     "pydantic==2.10.6",
     "pydantic-settings>=2.8.1",
