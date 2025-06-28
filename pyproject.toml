@@ -14,7 +14,7 @@ dependencies = [
     # Database
     "sqlalchemy==2.0.36",
     "alembic==1.14.0",
-    "aiosqlite==0.20.0",
+    "aiosqlite==0.21.0",
     # backend & frontend
     "streamlit==1.40.1",
     # Engineering
