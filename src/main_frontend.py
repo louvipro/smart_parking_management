@@ -1,5 +1,5 @@
 import streamlit as st
-from database.database import init_db
+from src.infrastructure.persistence.database import init_db
 
 # Initialize database on startup
 init_db()

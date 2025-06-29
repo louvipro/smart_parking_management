@@ -57,23 +57,7 @@ clean-uv-cache:
 	@echo "${YELLOW}=========> Cleaning uv cache...${NC}"
 	@$(UV) cache clean
 
-# Github actions locally
-install-act:
-	@echo "${YELLOW}=========> Installing github actions act to test locally${NC}"
-	curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/nektos/act/master/install.sh | bash
-	@echo -e "${YELLOW}Github act version is :"
-	@./bin/act --version
 
-act:
-	@echo "${YELLOW}Running Github Actions locally...${NC}"
-	@./bin/act --env-file .env --secret-file .secrets
-
-
-# clear GitHub and Gitlab CI local caches
-clear_ci_cache:
-	@echo "${YELLOW}Clearing CI cache...${NC}"
-	@echo "${YELLOW}Clearing Github ACT local cache...${NC}"
-	rm -rf ~/.cache/act ~/.cache/actcache
 
 ######## Ollama
 install-ollama:
@@ -123,19 +107,7 @@ test-ollama:
 	curl -X POST http://localhost:11434/api/generate -H "Content-Type: application/json" -d '{"model": "$(OLLAMA_MODEL_NAME)", "prompt": "Hello", "stream": false}'
 
 
-run-langfuse:
-	@echo "${YELLOW}Running langfuse...${NC}"
-	@if [ "$$(uname)" = "Darwin" ]; then \
-	    echo "Detected macOS running postgresql with Homebrew..."; \
-	    colima start
-	    brew services start postgresql@17; \
 
-	elif [ "$$(uname)" = "Linux" ]; then \
-	    echo "Detected Linux running postgresql with systemctl..."; \
-	else \
-	    echo "Unsupported OS. Please start postgres manually."; \
-	    exit 1; \
-	fi
 
 
 ########### Docker & deployment
@@ -161,13 +133,4 @@ docker-compose:
 	docker-compose up --build
 
 
-# This build the documentation based on current code 'src/' and 'docs/' directories
-# This is to run the documentation locally to see how it looks
-deploy-doc-local:
-	@echo "${YELLOW}Deploying documentation locally...${NC}"
-	@$(UV) run mkdocs build && $(UV) run mkdocs serve
 
-# Deploy it to the gh-pages branch in your GitHub repository (you need to setup the GitHub Pages in github settings to use the gh-pages branch)
-deploy-doc-gh:
-	@echo "${YELLOW}Deploying documentation in github actions..${NC}"
-	@$(UV) run mkdocs build && $(UV) run mkdocs gh-deploy

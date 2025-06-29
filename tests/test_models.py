@@ -2,8 +2,8 @@ import pytest
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.database.models import Base, Vehicle, ParkingSpot, ParkingSession
-from src.database.custom_types import UTCDateTime
+from src.infrastructure.persistence.models.models import Base, Vehicle, ParkingSpot, ParkingSession
+from src.shared.custom_types import UTCDateTime
 
 
 @pytest.fixture(scope="function")

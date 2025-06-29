@@ -2,9 +2,9 @@ import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
-from services.parking_service import ParkingService
-from schemas.parking import VehicleEntry, VehicleExit, SpotType, PaymentStatus
-from database.models import Vehicle, ParkingSpot, ParkingSession
+from src.application.services.parking_service import ParkingService
+from src.infrastructure.api.schemas.parking import VehicleEntry, VehicleExit, SpotType, PaymentStatus
+from src.infrastructure.persistence.models.models import Vehicle, ParkingSpot, ParkingSession
 
 
 @pytest.fixture
@@ -170,7 +170,7 @@ class TestParkingServiceVehicleExit:
         
         exit_data = VehicleExit(license_plate=parked_vehicle.vehicle.license_plate)
         # Mock exit time to be 2 hours after entry
-        with patch('services.parking_service.datetime') as mock_dt:
+        with patch('src.application.services.parking_service.datetime') as mock_dt:
             mock_dt.now.return_value = parked_vehicle.entry_time + timedelta(hours=2)
             mock_dt.timezone = timezone
             payment_info = await parking_service.register_vehicle_exit(exit_data)

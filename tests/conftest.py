@@ -5,8 +5,8 @@ from sqlalchemy.pool import NullPool
 import tempfile
 import os
 
-from database.models import Base
-from settings_env import Settings
+from src.infrastructure.persistence.models.models import Base, Vehicle, ParkingSpot, ParkingSession
+from src.config.settings_env import Settings
 
 
 # Event loop fixture removed - pytest-asyncio provides it automatically
@@ -69,7 +69,7 @@ def test_settings():
 @pytest.fixture
 async def init_parking_spots(db_session: AsyncSession):
     """Initialize parking spots for testing."""
-    from database.models import ParkingSpot
+    from src.infrastructure.persistence.models.models import ParkingSpot
     
     # Create test parking spots
     spots = []
@@ -93,7 +93,7 @@ async def init_parking_spots(db_session: AsyncSession):
 @pytest.fixture
 async def sample_vehicle(db_session: AsyncSession):
     """Create a sample vehicle for testing."""
-    from database.models import Vehicle
+    from src.infrastructure.persistence.models.models import Vehicle
     
     vehicle = Vehicle(
         license_plate="ABC123",
@@ -109,7 +109,7 @@ async def sample_vehicle(db_session: AsyncSession):
 @pytest.fixture
 async def sample_parking_session(db_session: AsyncSession, sample_vehicle, init_parking_spots):
     """Create a sample parking session for testing."""
-    from database.models import ParkingSession, ParkingSpot
+    from src.infrastructure.persistence.models.models import ParkingSession, ParkingSpot
     from datetime import datetime, timezone
     
     # Get the first available spot

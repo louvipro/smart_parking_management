@@ -2,7 +2,8 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import create_engine, Column, Integer
 from sqlalchemy.orm import sessionmaker, declarative_base
-from src.database.custom_types import UTCDateTime
+from src.shared.custom_types import UTCDateTime
+from unittest.mock import MagicMock, patch
 
 Base = declarative_base()
 
@@ -73,3 +74,45 @@ def test_utc_datetime_different_timezone_to_db_and_back(db_session_custom_types)
     retrieved_instance = session.query(TestModel).first()
     assert retrieved_instance.utc_datetime_col == now_utc_expected
     assert retrieved_instance.utc_datetime_col.tzinfo == timezone.utc
+
+def test_utc_datetime_process_bind_param_naive_explicit():
+    utc_type = UTCDateTime()
+    naive_dt = datetime(2023, 1, 1, 10, 0, 0) # Naive datetime
+    
+    # Mock a dialect that is not sqlite to hit the else branch in load_dialect_impl
+    mock_dialect = MagicMock()
+    mock_dialect.name = 'postgresql'
+    mock_dialect.type_descriptor.return_value = MagicMock()
+
+    # Test process_bind_param with naive datetime
+    processed_value = utc_type.process_bind_param(naive_dt, mock_dialect)
+    assert processed_value.tzinfo is None # Should be naive after replace(tzinfo=None)
+    assert processed_value == naive_dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+def test_utc_datetime_process_result_value_naive_explicit():
+    utc_type = UTCDateTime()
+    # Simulate a naive datetime coming from the database
+    naive_db_dt = datetime(2023, 1, 1, 10, 0, 0) 
+    
+    # Mock a dialect that is not sqlite
+    mock_dialect = MagicMock()
+    mock_dialect.name = 'postgresql'
+    mock_dialect.type_descriptor.return_value = MagicMock()
+
+    # Test process_result_value with naive datetime from DB
+    processed_value = utc_type.process_result_value(naive_db_dt, mock_dialect)
+    assert processed_value.tzinfo == timezone.utc # Should be UTC aware
+    assert processed_value == naive_db_dt.replace(tzinfo=timezone.utc)
+
+def test_utc_datetime_load_dialect_impl_non_sqlite():
+    utc_type = UTCDateTime()
+    mock_dialect = MagicMock()
+    mock_dialect.name = 'postgresql'
+    mock_dialect.type_descriptor.return_value = "mock_type_descriptor"
+
+    result = utc_type.load_dialect_impl(mock_dialect)
+    assert result == "mock_type_descriptor"
+    mock_dialect.type_descriptor.assert_called_once()
+    args, kwargs = mock_dialect.type_descriptor.call_args
+    assert isinstance(args[0], UTCDateTime.impl)
+    assert args[0].timezone is True

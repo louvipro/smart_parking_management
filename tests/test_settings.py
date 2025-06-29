@@ -1,7 +1,7 @@
-from settings_env import Settings
+from src.config.settings_env import Settings
 import os
 from unittest.mock import patch
-from src.utils import initialize_logger
+from src.shared.utils import initialize_logger
 from loguru import logger as loguru_logger
 
 
@@ -12,28 +12,28 @@ def test_settings():
 def test_initialize_logger_dev_mode():
     with patch.dict(os.environ, {"DEV_MODE": "True"}):
         # Reload settings_env to pick up the patched environment variable
-        import settings_env
+        import src.config.settings_env as settings_env
         import importlib
         importlib.reload(settings_env)
         
         # Reload utils to re-initialize the logger with new settings
-        import src.utils
-        importlib.reload(src.utils)
+        import src.shared.utils
+        importlib.reload(src.shared.utils)
         
-        logger = src.utils.initialize_logger()
+        logger = src.shared.utils.initialize_logger()
         assert logger.level("TRACE").no == loguru_logger.level("TRACE").no
 
 
 def test_initialize_logger_prod_mode():
     with patch.dict(os.environ, {"DEV_MODE": "False"}):
         # Reload settings_env to pick up the patched environment variable
-        import settings_env
+        import src.config.settings_env as settings_env
         import importlib
         importlib.reload(settings_env)
         
         # Reload utils to re-initialize the logger with new settings
-        import src.utils
-        importlib.reload(src.utils)
+        import src.shared.utils
+        importlib.reload(src.shared.utils)
         
-        logger = src.utils.initialize_logger()
+        logger = src.shared.utils.initialize_logger()
         assert logger.level("INFO").no == loguru_logger.level("INFO").no

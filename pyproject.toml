@@ -31,28 +31,19 @@ dependencies = [
 # uses also the depenencies in the [project.dependencies] section
 [tool.uv]
 managed = true
-default-groups = ["dev", "docs"]
+default-groups = ["dev"]
 
 [dependency-groups]
 # if you add new dependencies here, make sure to add them to [tool.uv] default-groups up above
 dev = [
     "pytest == 8.3.0",
     "pytest-asyncio == 0.24.0",
-    "pre-commit == 4.0.1",
+    
     "jupyter==1.1.1",
     "ruff==0.8.1",
     "pytest-cov==5.0.0"
 ]
-docs = [
-    "mkdocs == 1.6.1",
-    "mkdocs-material>=9.5.41",
-    "mkdocstrings>=0.26.2",
-    "mkdocs-mermaid2-plugin>=1.1.1",
-    "mkdocs-gen-files>=0.5.0",
-    "mkdocstrings-python",
-    "mkdocs-same-dir",
-    "mkdocs-exclude"
-]
+
 
 
 # scripts : inside the root folder, you can run `uv run --directory . hi` or

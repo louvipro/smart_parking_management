@@ -1,10 +1,11 @@
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from datetime import datetime, timedelta
+import os
 
-from ml.parking_agent import ParkingAssistant
-from services.parking_service import ParkingService
-from schemas.parking import VehicleEntry, SpotType, VehicleExit
+from src.infrastructure.ml_agents.parking_agent import ParkingAssistant
+from src.application.services.parking_service import ParkingService
+from src.infrastructure.api.schemas.parking import VehicleEntry, SpotType, VehicleExit
 
 
 @pytest.fixture
@@ -31,9 +32,9 @@ class TestParkingAgentTools:
     """Test the parking agent tools used by CrewAI agents."""
 
     @pytest.fixture
-    def assistant(self):
+    def assistant(self, db_session):
         """Create a ParkingAssistant instance."""
-        return ParkingAssistant()
+        return ParkingAssistant(db_session=db_session)
 
     def get_tool_func(self, assistant, tool_name):
         """Helper to find a tool's function by its name."""
@@ -42,7 +43,7 @@ class TestParkingAgentTools:
                 return tool.func
         raise ValueError(f"Tool '{tool_name}' not found")
 
-    @patch("ml.parking_agent.AnalyticsService")
+    @patch("src.infrastructure.ml_agents.parking_agent.AnalyticsService")
     def test_get_current_count_tool(self, MockAnalyticsService, assistant):
         """Test the get_current_count tool functionality."""
         # Mock the service method
@@ -57,7 +58,7 @@ class TestParkingAgentTools:
         assert isinstance(result, str)
         assert "5" in result
 
-    @patch("ml.parking_agent.AnalyticsService")
+    @patch("src.infrastructure.ml_agents.parking_agent.AnalyticsService")
     def test_count_by_color_tool(self, MockAnalyticsService, assistant):
         """Test the count_by_color tool functionality."""
         mock_analytics = MockAnalyticsService.return_value
@@ -70,7 +71,7 @@ class TestParkingAgentTools:
         assert "2" in result
         assert "red" in result
 
-    @patch("ml.parking_agent.AnalyticsService")
+    @patch("src.infrastructure.ml_agents.parking_agent.AnalyticsService")
     def test_get_revenue_tool(self, MockAnalyticsService, assistant):
         """Test the get_revenue tool functionality."""
         mock_analytics = MockAnalyticsService.return_value
@@ -82,33 +83,33 @@ class TestParkingAgentTools:
         assert isinstance(result, str)
         assert "$25.50" in result
 
-    @patch("ml.parking_agent.ParkingService")
+    @patch("src.infrastructure.ml_agents.parking_agent.ParkingService")
     def test_get_parking_status_tool(self, MockParkingService, assistant):
         """Test the get_parking_status tool functionality."""
         mock_service = MockParkingService.return_value
         mock_service.get_parking_status = AsyncMock(return_value=AsyncMock(
-            total_spots=100,
-            occupied_spots=60,
-            available_spots=40,
-            occupancy_rate=60.0
+            total_spots=15,
+            occupied_spots=1,
+            available_spots=14,
+            occupancy_rate=6.67
         ))
 
         tool_func = self.get_tool_func(assistant, "get_parking_status")
 
         result = tool_func(None)
         assert isinstance(result, str)
-        assert "Total spots: 100" in result
-        assert "Available: 40" in result
-        assert "Occupancy rate: 60.0%" in result
+        assert "Total spots: 15" in result
+        assert "Available: 14" in result
+        assert "Occupancy rate: 6.67%" in result
 
 
 class TestParkingAgentIntegration:
     """Test the full parking agent integration."""
 
     @pytest.fixture
-    def assistant(self):
+    def assistant(self, db_session):
         """Create a ParkingAssistant instance."""
-        return ParkingAssistant()
+        return ParkingAssistant(db_session=db_session)
 
     def test_agent_tool_creation(self, assistant):
         """Test that agents are created with the correct tools."""
@@ -133,3 +134,36 @@ class TestParkingAgentIntegration:
         for tool in assistant.tools:
             assert tool.description is not None
             assert len(tool.description) > 10
+
+    @patch('src.infrastructure.ml_agents.parking_agent.Crew')
+    @patch.dict(os.environ, {'OPENAI_API_KEY': 'invalid_key'})
+    async def test_process_query_api_error(self, MockCrew, assistant):
+        """Test process_query handles API key/connection errors."""
+        mock_crew_instance = MockCrew.return_value
+        mock_crew_instance.kickoff.side_effect = Exception("API key error or connection issue")
+
+        response = await assistant.process_query("How many cars are parked?")
+        assert "I need an AI model to process your query." in response
+        assert "API key error or connection issue" in response
+
+    @patch('src.infrastructure.ml_agents.parking_agent.Crew')
+    async def test_process_query_generic_error(self, MockCrew, assistant):
+        """Test process_query handles generic exceptions."""
+        mock_crew_instance = MockCrew.return_value
+        mock_crew_instance.kickoff.side_effect = Exception("Something unexpected happened")
+
+        response = await assistant.process_query("What is the revenue?")
+        assert "I encountered an error: Something unexpected happened" in response
+
+    @patch('src.infrastructure.ml_agents.parking_agent.ChatOpenAI')
+    @patch.dict(os.environ, {'OPENAI_MODEL_NAME': 'ollama/test-model', 'OPENAI_API_BASE': 'http://localhost:8000'})
+    def test_ollama_model_initialization(self, MockChatOpenAI, db_session):
+        """Test that ChatOpenAI is initialized correctly for Ollama models."""
+        ParkingAssistant(db_session=db_session)
+        MockChatOpenAI.assert_called_once_with(
+            model='test-model',
+            openai_api_key='dummy',
+            openai_api_base='http://localhost:8000',
+            temperature=0.1,
+            max_tokens=2000
+        )

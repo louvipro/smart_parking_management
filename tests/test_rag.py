@@ -2,8 +2,9 @@ import os
 
 import pytest
 
-from ml.ai import get_rag_response #, get_related_document_ai_search, run_azure_ai_search_indexer
-from utils import logger, settings
+from src.infrastructure.ml_agents.ai import get_rag_response
+from src.shared.utils import logger
+from src.config.settings_env import settings
 
 logger.info(f" working directory is {os.getcwd()}")
 

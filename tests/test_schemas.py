@@ -1,9 +1,7 @@
 from datetime import datetime, timezone, timedelta
 import pytest
 from pydantic import ValidationError
-from src.schemas.parking import (
-    SpotType,
-    PaymentStatus,
+from src.infrastructure.api.schemas.parking import (
     VehicleBase,
     VehicleCreate,
     VehicleResponse,
@@ -18,6 +16,7 @@ from src.schemas.parking import (
     ParkingStatus,
     ParkingAnalytics,
 )
+from src.domain.common import SpotType, PaymentStatus
 
 
 def test_spot_type_enum():

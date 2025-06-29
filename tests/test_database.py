@@ -4,9 +4,10 @@ from datetime import datetime, timedelta
 import os
 from unittest.mock import patch, MagicMock
 import sys
+import tempfile
 
-from database.models import Vehicle, ParkingSpot, ParkingSession, Base
-from database.database import init_db # Import init_db directly
+from src.infrastructure.persistence.models.models import Vehicle, ParkingSpot, ParkingSession, Base
+from src.infrastructure.persistence.database import init_db # Import init_db directly
 
 
 class TestVehicleModel:
@@ -283,22 +284,25 @@ def init_db_fixture():
     original_db_url = os.getenv("DATABASE_URL")
     original_async_db_url = os.getenv("ASYNC_DATABASE_URL")
     
-    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-    os.environ["ASYNC_DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+    # Use a temporary file for the test database to trigger the absolute path logic
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_file:
+        test_db_path = tmp_file.name
+    os.environ["DATABASE_URL"] = f"sqlite:///{test_db_path}"
+    os.environ["ASYNC_DATABASE_URL"] = f"sqlite+aiosqlite:///{test_db_path}"
 
     # Import database.database here to ensure it picks up the patched environment variables
     # and re-initializes its global engine variables.
-    import database.database
+    import src.infrastructure.persistence.database as database
     import importlib
-    importlib.reload(database.database)
+    importlib.reload(database)
 
     # Ensure tables are dropped before each test run
-    database.database.Base.metadata.drop_all(database.database.engine)
+    database.Base.metadata.drop_all(database.engine)
 
-    yield database.database.engine # Yield the engine for inspection
+    yield database.engine # Yield the engine for inspection
 
     # Clean up after test
-    database.database.Base.metadata.drop_all(database.database.engine)
+    database.Base.metadata.drop_all(database.engine)
     
     if original_db_url:
         os.environ["DATABASE_URL"] = original_db_url
@@ -311,7 +315,7 @@ def init_db_fixture():
         del os.environ["ASYNC_DATABASE_URL"]
     
     # Reload database.database again to restore original settings
-    importlib.reload(database.database)
+    importlib.reload(database)
 
 
 class TestDatabaseFunctions:

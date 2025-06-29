@@ -1,10 +1,10 @@
 import pytest
 from datetime import datetime, timedelta, timezone, timezone
 
-from services.analytics_service import AnalyticsService
-from services.parking_service import ParkingService
-from schemas.parking import VehicleEntry, VehicleExit, SpotType, PaymentStatus
-from database.models import ParkingSession
+from src.application.services.analytics_service import AnalyticsService
+from src.application.services.parking_service import ParkingService
+from src.infrastructure.api.schemas.parking import VehicleEntry, VehicleExit, SpotType, PaymentStatus
+from src.infrastructure.persistence.models.models import ParkingSession
 
 
 @pytest.fixture
