@@ -1,6 +1,7 @@
 import os
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import re
 
 from crewai import Agent, Task, Crew
 from langchain.tools import Tool
@@ -29,156 +30,108 @@ def run_async_in_sync(coro):
         future = executor.submit(run_in_thread)
         return future.result()
 
+# --- Tool-specific functions ---
+def get_total_parked_vehicles() -> str:
+    async def _get():
+        async with AsyncSessionLocal() as db:
+            s_repo = SQLAlchemyParkingSessionRepository(db)
+            analytics = AnalyticsService(None, s_repo, None)
+            count = await analytics.get_current_vehicle_count()
+            return f"There are currently {count} vehicles parked."
+    return run_async_in_sync(_get())
+
+def get_available_parking_spots() -> str:
+    async def _get():
+        async with AsyncSessionLocal() as db:
+            p_repo = SQLAlchemyParkingSpotRepository(db)
+            service = ParkingService(None, p_repo, None)
+            status = await service.get_parking_status()
+            return f"There are {status['available_spots']} spots available out of {status['total_spots']} total."
+    return run_async_in_sync(_get())
+
+def count_vehicles_by_color(color: str) -> str:
+    async def _get():
+        async with AsyncSessionLocal() as db:
+            v_repo = SQLAlchemyVehicleRepository(db)
+            analytics = AnalyticsService(v_repo, None, None)
+            count = await analytics.count_vehicles_by_color(color, active_only=True)
+            return f"There are {count} {color} cars parked."
+    return run_async_in_sync(_get())
+
+def get_brand_distribution() -> str:
+    async def _get():
+        async with AsyncSessionLocal() as db:
+            v_repo = SQLAlchemyVehicleRepository(db)
+            analytics = AnalyticsService(v_repo, None, None)
+            dist = await analytics.get_brand_distribution(active_only=True)
+            if not dist:
+                return "No brand data available for currently parked vehicles."
+            return "Brand Distribution:\n" + "\n".join([f"- {brand}: {count}" for brand, count in dist.items()])
+    return run_async_in_sync(_get())
+
+# --- Tool definitions ---
+tool_total_parked = Tool(name="get_total_parked_vehicles", func=lambda _: get_total_parked_vehicles(), description="Use to get the total number of vehicles currently parked.")
+tool_available_spots = Tool(name="get_available_parking_spots", func=lambda _: get_available_parking_spots(), description="Use to find out how many parking spots are currently available.")
+tool_count_by_color = Tool(name="count_vehicles_by_color", func=lambda color: count_vehicles_by_color(color), description="Use to count parked vehicles of a specific color.")
+tool_brand_distribution = Tool(name="get_brand_distribution", func=lambda _: get_brand_distribution(), description="Use to see the breakdown of car brands currently parked.")
 
 class ParkingAssistant:
-    """CrewAI-based parking assistant with proper async handling."""
-    
     def __init__(self):
-        # Configure the LLM
         model_name = os.getenv("OPENAI_MODEL_NAME", "gpt-3.5-turbo")
         api_key = os.getenv("OPENAI_API_KEY", "dummy")
         base_url = os.getenv("OPENAI_API_BASE", "http://localhost:11434/v1")
 
-        # Prioritize Ollama if the model name contains "ollama"
         if "ollama" in model_name.lower():
-            self.llm = ChatOpenAI(
-                model=model_name.replace("ollama/", ""),
-                openai_api_key="dummy",  # Ollama doesn't need a key
-                openai_api_base=base_url,
-                temperature=0.1,
-                max_tokens=2000
-            )
-        # Fallback to OpenAI only if a valid API key is provided
+            self.llm = ChatOpenAI(model=model_name.replace("ollama/", ""), openai_api_key="dummy", openai_api_base=base_url, temperature=0.1)
         elif api_key and api_key != "dummy":
-            self.llm = ChatOpenAI(
-                model=model_name,
-                openai_api_key=api_key,
-                temperature=0.1
-            )
-        # If no valid configuration is found, raise an error
+            self.llm = ChatOpenAI(model=model_name, openai_api_key=api_key, temperature=0.1)
         else:
-            raise ValueError("No valid LLM configuration found. Please set either Ollama or a valid OpenAI API key.")
+            raise ValueError("No valid LLM configuration found.")
+
+    def _select_tool_and_input(self, query: str) -> (Tool, str):
+        """Selects the right tool and determines the input based on the user's query."""
+        query = query.lower()
         
-        # Create tools for the agent
-        self.tools = self._create_tools()
-        
-        # Create the parking data analyst agent
-        self.analyst = Agent(
-            role='Parking Data Analyst',
-            goal='Analyze parking data and provide accurate information to users',
-            backstory="""You are an expert parking system analyst who can quickly 
-            access and interpret parking data. You provide clear, accurate answers 
-            about parking occupancy, revenue, and vehicle statistics. You must use the tools provided to answer questions.""",
-            verbose=True,
-            allow_delegation=False,
-            tools=self.tools,
-            llm=self.llm,
-            max_iter=7,
-            force_tool_use=True
-        )
-    
-    def _create_tools(self) -> list:
-        """Create tools for the CrewAI agent."""
+        color_match = re.search(r'\b(red|blue|green|black|white|yellow|silver)\b', query)
+        if color_match and "how many" in query:
+            return tool_count_by_color, color_match.group(1)
 
-        def get_current_count(_) -> str:
-            """Get the current number of vehicles in the parking."""
-            async def _get_count():
-                async with AsyncSessionLocal() as db:
-                    vehicle_repo = SQLAlchemyVehicleRepository(db)
-                    session_repo = SQLAlchemyParkingSessionRepository(db)
-                    spot_repo = SQLAlchemyParkingSpotRepository(db)
-                    analytics = AnalyticsService(vehicle_repo, session_repo, spot_repo)
-                    return await analytics.get_current_vehicle_count()
-            return f"There are currently {run_async_in_sync(_get_count())} vehicles parked."
+        if "brand" in query or "repartition" in query:
+            return tool_brand_distribution, query
 
-        def count_by_color(color: str) -> str:
-            """Count vehicles by color."""
-            if color.lower() in ['toyota', 'honda', 'ford', 'bmw', 'mercedes']:
-                return f"'{color}' is a car brand, not a color."
-            async def _count_color():
-                async with AsyncSessionLocal() as db:
-                    vehicle_repo = SQLAlchemyVehicleRepository(db)
-                    session_repo = SQLAlchemyParkingSessionRepository(db)
-                    spot_repo = SQLAlchemyParkingSpotRepository(db)
-                    analytics = AnalyticsService(vehicle_repo, session_repo, spot_repo)
-                    return await analytics.count_vehicles_by_color(color.lower(), active_only=True)
-            return f"There are {run_async_in_sync(_count_color())} {color} cars currently in the parking."
+        if "available" in query or "spots" in query or "places" in query:
+            return tool_available_spots, query
 
-        def get_recent_revenue(hours: str) -> str:
-            """Get revenue generated in the last N hours."""
-            try:
-                hours_int = int(hours)
-            except:
-                hours_int = 1
-            async def _get_revenue():
-                async with AsyncSessionLocal() as db:
-                    vehicle_repo = SQLAlchemyVehicleRepository(db)
-                    session_repo = SQLAlchemyParkingSessionRepository(db)
-                    spot_repo = SQLAlchemyParkingSpotRepository(db)
-                    analytics = AnalyticsService(vehicle_repo, session_repo, spot_repo)
-                    return await analytics.get_revenue_last_hours(hours_int)
-            return f"Revenue generated in the last {hours_int} hour(s): ${run_async_in_sync(_get_revenue()):.2f}"
-
-        def get_parking_status(_) -> str:
-            """Get current parking status."""
-            async def _get_status():
-                async with AsyncSessionLocal() as db:
-                    vehicle_repo = SQLAlchemyVehicleRepository(db)
-                    spot_repo = SQLAlchemyParkingSpotRepository(db)
-                    session_repo = SQLAlchemyParkingSessionRepository(db)
-                    parking = ParkingService(vehicle_repo, spot_repo, session_repo)
-                    return await parking.get_parking_status()
-            status = run_async_in_sync(_get_status())
-            return f"""Current Parking Status:
-- Total spots: {status['total_spots']}
-- Available spots: {status['available_spots']}
-- Occupied spots: {status['occupied_spots']}
-- Occupancy rate: {status['occupancy_rate']:.1f}%"""
-
-        def get_brand_distribution(_) -> str:
-            """Get the distribution of car brands currently parked."""
-            async def _get_distribution():
-                async with AsyncSessionLocal() as db:
-                    vehicle_repo = SQLAlchemyVehicleRepository(db)
-                    session_repo = SQLAlchemyParkingSessionRepository(db)
-                    spot_repo = SQLAlchemyParkingSpotRepository(db)
-                    analytics = AnalyticsService(vehicle_repo, session_repo, spot_repo)
-                    return await analytics.get_brand_distribution(active_only=True)
-            dist = run_async_in_sync(_get_distribution())
-            if not dist:
-                return "No brand data available for currently parked vehicles."
-            return "Brand Distribution:\n" + "\n".join([f"- {brand}: {count}" for brand, count in dist.items()])
-
-        return [
-            Tool(name="get_current_count", func=get_current_count, description="Use to get the current total number of vehicles in the parking."),
-            Tool(name="count_by_color", func=count_by_color, description="Use to count vehicles of a specific color. The input must be a color name."),
-            Tool(name="get_revenue", func=get_recent_revenue, description="Use to get revenue generated in the last N hours. The input must be a number of hours."),
-            Tool(name="get_parking_status", func=get_parking_status, description="Use to get the current parking status, including available spots and occupancy rate."),
-            Tool(name="get_brand_distribution", func=get_brand_distribution, description="Use to get the distribution of car brands currently parked."),
-        ]
-
+        if "how many" in query and "car" in query:
+            return tool_total_parked, query
+            
+        return None, None
 
     def process_query(self, query: str) -> str:
-        """Process a user query using CrewAI."""
-        try:
-            task = Task(
-                description=f"""Analyze the user's query and use the available tools to provide a direct and accurate answer.
-                The user wants to know: '{query}'
-                
-                Your final answer MUST be the result from a tool. Do not add any extra conversational text.
-                - For questions about counts (total, by color): Use the appropriate counting tool.
-                - For questions about status or revenue: Use the corresponding status or revenue tool.
-                - For questions about distributions (brand, floor): Use the distribution tools.
-                """,
-                expected_output="A clear, accurate response to the user's parking query based on actual tool results.",
-                agent=self.analyst
-            )
-            crew = Crew(agents=[self.analyst], tasks=[task], verbose=True, process="sequential")
-            result = crew.kickoff()
-            return str(result)
-        except Exception as e:
-            error_str = str(e)
-            if "api" in error_str.lower() or "key" in error_str.lower() or "connection" in error_str.lower():
-                return f"I need an AI model to process your query. Error details: {error_str}"
-            else:
-                return f"Sorry, I encountered an error: {error_str}"
+        """Process a user query using a dynamically created specialist agent."""
+        
+        selected_tool, tool_input = self._select_tool_and_input(query)
+
+        if not selected_tool:
+            return "I'm sorry, I can only answer questions about the number of cars, available spots, colors, or brands."
+
+        specialist_agent = Agent(
+            role='Parking Data Specialist',
+            goal=f'Execute the assigned tool to answer the query: "{query}"',
+            backstory='You are a specialist agent with a single tool. Your job is to execute it and return the result.',
+            verbose=True,
+            tools=[selected_tool],
+            llm=self.llm,
+            max_iter=2,
+            allow_delegation=False
+        )
+
+        task = Task(
+            description=f'Use your tool to answer the query: "{query}". The specific input for your tool is: "{tool_input}"',
+            expected_output='The direct result from executing the tool.',
+            agent=specialist_agent
+        )
+
+        crew = Crew(agents=[specialist_agent], tasks=[task], process="sequential")
+        result = crew.kickoff()
+        return str(result)

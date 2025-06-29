@@ -58,12 +58,14 @@ async def register_entry(vehicle_data):
         spot_repo = SQLAlchemyParkingSpotRepository(db)
         session_repo = SQLAlchemyParkingSessionRepository(db)
         service = ParkingService(vehicle_repo, spot_repo, session_repo)
-        return await service.register_vehicle_entry(
+        session = await service.register_vehicle_entry(
             license_plate=vehicle_data.license_plate,
             color=vehicle_data.color,
             brand=vehicle_data.brand,
             spot_type=vehicle_data.spot_type
         )
+        await db.commit()
+        return session
 
 
 async def register_exit(exit_data):
@@ -72,7 +74,9 @@ async def register_exit(exit_data):
         spot_repo = SQLAlchemyParkingSpotRepository(db)
         session_repo = SQLAlchemyParkingSessionRepository(db)
         service = ParkingService(vehicle_repo, spot_repo, session_repo)
-        return await service.register_vehicle_exit(exit_data.license_plate)
+        payment = await service.register_vehicle_exit(exit_data.license_plate)
+        await db.commit()
+        return payment
 
 
 # Get current status

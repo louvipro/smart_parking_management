@@ -48,14 +48,16 @@ class ParkingService:
             entry_time=datetime.now(timezone.utc),
             hourly_rate=5.0 # Assuming a default hourly rate for now, this should come from somewhere else
         )
-        session = await self.parking_session_repo.add(session)
+        
+        # The add method now returns a complete session with vehicle and spot
+        new_session = await self.parking_session_repo.add(session)
         
         # Mark spot as occupied
         available_spot.is_occupied = True
         await self.parking_spot_repo.update(available_spot)
         
-        logger.info(f"Vehicle {license_plate} entered at spot {available_spot.spot_number}")
-        return session
+        logger.info(f"Vehicle {license_plate} entered at spot {new_session.parking_spot.spot_number}")
+        return new_session
 
     async def register_vehicle_exit(self, license_plate: str) -> ParkingSession:
         # Find active session

@@ -228,8 +228,10 @@ class SQLAlchemyParkingSessionRepository(AbstractParkingSessionRepository):
         )
         self.session.add(orm_session)
         await self.session.flush()
-        await self.session.refresh(orm_session)
-        return ParkingSession(
+        await self.session.refresh(orm_session, ["vehicle", "parking_spot"])
+        
+        # Convert ORM object to domain entity
+        domain_session = ParkingSession(
             id=orm_session.id,
             vehicle_id=orm_session.vehicle_id,
             parking_spot_id=orm_session.parking_spot_id,
@@ -237,8 +239,26 @@ class SQLAlchemyParkingSessionRepository(AbstractParkingSessionRepository):
             exit_time=orm_session.exit_time,
             amount_paid=orm_session.amount_paid,
             payment_status=orm_session.payment_status,
-            hourly_rate=session.hourly_rate,
+            hourly_rate=session.hourly_rate
         )
+        
+        # Attach related objects after creation
+        domain_session.vehicle = Vehicle(
+            id=orm_session.vehicle.id,
+            license_plate=orm_session.vehicle.license_plate,
+            color=orm_session.vehicle.color,
+            brand=orm_session.vehicle.brand,
+            created_at=orm_session.vehicle.created_at
+        )
+        domain_session.parking_spot = ParkingSpot(
+            id=orm_session.parking_spot.id,
+            spot_number=orm_session.parking_spot.spot_number,
+            floor=orm_session.parking_spot.floor,
+            spot_type=orm_session.parking_spot.spot_type,
+            is_occupied=orm_session.parking_spot.is_occupied
+        )
+        
+        return domain_session
 
     async def get_by_id(self, session_id: int) -> Optional[ParkingSession]:
         result = await self.session.execute(
@@ -284,13 +304,25 @@ class SQLAlchemyParkingSessionRepository(AbstractParkingSessionRepository):
             .options(selectinload(ORMParkingSession.vehicle), selectinload(ORMParkingSession.parking_spot))
             .order_by(ORMParkingSession.entry_time.desc())
         )
-        return [
-            ParkingSession(
+        
+        sessions = []
+        for s in result.scalars().all():
+            domain_session = ParkingSession(
                 id=s.id, vehicle_id=s.vehicle_id, parking_spot_id=s.parking_spot_id,
                 entry_time=s.entry_time, exit_time=s.exit_time, amount_paid=s.amount_paid,
                 payment_status=s.payment_status, hourly_rate=s.hourly_rate
-            ) for s in result.scalars().all()
-        ]
+            )
+            domain_session.vehicle = Vehicle(
+                id=s.vehicle.id, license_plate=s.vehicle.license_plate, color=s.vehicle.color,
+                brand=s.vehicle.brand, created_at=s.vehicle.created_at
+            )
+            domain_session.parking_spot = ParkingSpot(
+                id=s.parking_spot.id, spot_number=s.parking_spot.spot_number, floor=s.parking_spot.floor,
+                spot_type=s.parking_spot.spot_type, is_occupied=s.parking_spot.is_occupied
+            )
+            sessions.append(domain_session)
+            
+        return sessions
 
     async def get_all_sessions(self) -> List[ParkingSession]:
         result = await self.session.execute(select(ORMParkingSession))
