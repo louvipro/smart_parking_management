@@ -35,8 +35,7 @@ run-frontend:
 	@echo "Running frontend"
 	cd src; $(UV) run streamlit run main_frontend.py --server.port $(STREAMLIT_PORT) --server.headless True;
 
-run-app:
-	make run-frontend
+
 
 pre-commit-install:
 	@echo "${YELLOW}=========> Installing pre-commit...${NC}"
