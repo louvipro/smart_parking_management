@@ -4,8 +4,13 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.pool import NullPool
 import tempfile
 import os
+from freezegun import freeze_time
+from datetime import datetime, timedelta, timezone
 
 from src.infrastructure.persistence.models.models import Base, Vehicle, ParkingSpot, ParkingSession
+from src.infrastructure.persistence.sqlalchemy_repositories.sqlalchemy_repositories import SQLAlchemyVehicleRepository, SQLAlchemyParkingSpotRepository, SQLAlchemyParkingSessionRepository
+from src.application.services.parking_service import ParkingService
+from src.application.services.analytics_service import AnalyticsService
 from src.config.settings_env import Settings
 
 
@@ -126,3 +131,51 @@ async def sample_parking_session(db_session: AsyncSession, sample_vehicle, init_
     await db_session.commit()
     await db_session.refresh(session)
     return session
+
+@pytest.fixture
+async def parked_vehicle(parking_service, init_parking_spots):
+    """Create a vehicle that's already parked."""
+    with freeze_time(datetime.now(timezone.utc) - timedelta(hours=2)):
+        session_response = await parking_service.register_vehicle_entry(
+            license_plate="PARKED123",
+            color="Silver",
+            brand="Mercedes",
+            spot_type=SpotType.REGULAR
+        )
+    return session_response
+
+@pytest.fixture
+async def parking_service(db_session):
+    """Create a ParkingService instance with test database session."""
+    vehicle_repo = SQLAlchemyVehicleRepository(db_session)
+    parking_spot_repo = SQLAlchemyParkingSpotRepository(db_session)
+    parking_session_repo = SQLAlchemyParkingSessionRepository(db_session)
+    return ParkingService(
+        vehicle_repo=vehicle_repo,
+        parking_spot_repo=parking_spot_repo,
+        parking_session_repo=parking_session_repo
+    )
+
+@pytest.fixture
+async def analytics_service(db_session):
+    """Create an AnalyticsService instance with test database session."""
+    vehicle_repo = SQLAlchemyVehicleRepository(db_session)
+    parking_spot_repo = SQLAlchemyParkingSpotRepository(db_session)
+    parking_session_repo = SQLAlchemyParkingSessionRepository(db_session)
+    return AnalyticsService(
+        vehicle_repo=vehicle_repo,
+        parking_spot_repo=parking_spot_repo,
+        parking_session_repo=parking_session_repo
+    )
+
+@pytest.fixture
+async def empty_db_for_analytics(db_session):
+    """Provides an analytics service with an empty database."""
+    vehicle_repo = SQLAlchemyVehicleRepository(db_session)
+    parking_spot_repo = SQLAlchemyParkingSpotRepository(db_session)
+    parking_session_repo = SQLAlchemyParkingSessionRepository(db_session)
+    return AnalyticsService(
+        vehicle_repo=vehicle_repo,
+        parking_spot_repo=parking_spot_repo,
+        parking_session_repo=parking_session_repo
+    )

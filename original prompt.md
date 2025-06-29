@@ -28,7 +28,6 @@ Python 3.12
 Streamlit for web framework
 CrewAI (https://www.crewai.com/) for AI agent system
 LiteLLM (https://www.litellm.ai) for LLM calls
-FastAPI (optional backend)
 Pydantic for data validation
 Docker with Dockerfile for containerization
 

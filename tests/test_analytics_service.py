@@ -1,22 +1,19 @@
 import pytest
-from datetime import datetime, timedelta, timezone, timezone
+from datetime import datetime, timedelta, timezone
+from freezegun import freeze_time
+from unittest.mock import patch
+from unittest.mock import patch
+from unittest.mock import patch
 
 from src.application.services.analytics_service import AnalyticsService
 from src.application.services.parking_service import ParkingService
-from src.infrastructure.api.schemas.parking import VehicleEntry, VehicleExit, SpotType, PaymentStatus
-from src.infrastructure.persistence.models.models import ParkingSession
+from src.domain.common import SpotType, PaymentStatus
+from src.domain.entities import ParkingSession
+from src.infrastructure.persistence.models.models import ParkingSession as ORMParkingSession
+from sqlalchemy import delete
 
 
-@pytest.fixture
-async def analytics_service(db_session):
-    """Create an AnalyticsService instance with test database session."""
-    return AnalyticsService(db=db_session)
 
-
-@pytest.fixture
-async def parking_service(db_session):
-    """Create a ParkingService instance for test data setup."""
-    return ParkingService(db=db_session)
 
 
 @pytest.fixture
@@ -36,20 +33,18 @@ async def setup_test_data(db_session, parking_service, init_parking_spots):
     
     for i, (plate, color, brand) in enumerate(vehicles_data):
         # Register entry
-        entry_data = VehicleEntry(
+        session = await parking_service.register_vehicle_entry(
             license_plate=plate,
             color=color,
             brand=brand,
             spot_type=SpotType.REGULAR
         )
-        
-        session = await parking_service.register_vehicle_entry(entry_data)
         sessions.append(session)
     
     # Exit some vehicles with payments
     for i, session in enumerate(sessions[:3]):  # Exit first 3 vehicles
-        exit_data = VehicleExit(license_plate=session.vehicle.license_plate)
-        await parking_service.register_vehicle_exit(exit_data)
+        vehicle = await parking_service.vehicle_repo.get_by_id(session.vehicle_id)
+        await parking_service.register_vehicle_exit(vehicle.license_plate)
     
     return sessions
 
@@ -73,10 +68,13 @@ class TestAnalyticsServiceRevenue:
         revenue = await analytics_service.get_revenue_last_hours(24)
         assert revenue == 0.0
 
-    async def test_get_revenue_for_period_with_no_payments(self, analytics_service, setup_test_data):
+    async def test_get_revenue_for_period_with_no_payments(self, analytics_service: AnalyticsService, empty_db_for_analytics, db_session):
         """Test revenue for a period with no payments."""
-        # All payments in setup_test_data are older than 1 microsecond
-        revenue = await analytics_service.get_revenue_last_hours(0)
+        # Ensure no existing parking sessions interfere
+        await db_session.execute(delete(ORMParkingSession))
+        await db_session.commit()
+
+        revenue = await empty_db_for_analytics.get_revenue_last_hours(0)
         assert revenue == 0.0
     
     async def test_get_revenue_by_day(self, analytics_service, parking_service, init_parking_spots):
@@ -90,18 +88,17 @@ class TestAnalyticsServiceRevenue:
             exit_time = base_date - timedelta(days=i + 1, hours=1)
             
             # Manually set exit time and amount paid for accurate revenue calculation
-            entry_data = VehicleEntry(
+            session = await parking_service.register_vehicle_entry(
                 license_plate=f"DAY{i}",
                 color="Blue",
                 brand="Toyota",
                 spot_type=SpotType.REGULAR
             )
-            session = await parking_service.register_vehicle_entry(entry_data)
-            session_obj = await parking_service.db.get(ParkingSession, session.id)
+            session_obj = await parking_service.parking_session_repo.get_by_id(session.id)
             session_obj.exit_time = exit_time
             session_obj.amount_paid = 5.0 * ((exit_time - entry_time).total_seconds() / 3600) # Assuming 5.0 hourly rate
             session_obj.payment_status = PaymentStatus.PAID
-            await parking_service.db.commit()
+            await parking_service.parking_session_repo.update(session_obj)
         
         # Get revenue by day
         revenue_data = await analytics_service.get_revenue_by_day(7)
@@ -144,23 +141,21 @@ class TestAnalyticsServiceVehicleCounts:
         
         # Day 1: 3 vehicles
         for i in range(3):
-            entry_data = VehicleEntry(
+            await parking_service.register_vehicle_entry(
                 license_plate=f"DAY1_{i}",
                 color="Blue",
                 brand="Toyota",
                 spot_type=SpotType.REGULAR
             )
-            await parking_service.register_vehicle_entry(entry_data)
         
         # Day 2: 2 vehicles
         for i in range(2):
-            entry_data = VehicleEntry(
+            await parking_service.register_vehicle_entry(
                 license_plate=f"DAY2_{i}",
                 color="Red",
                 brand="Honda",
                 spot_type=SpotType.REGULAR
             )
-            await parking_service.register_vehicle_entry(entry_data)
         
         # Calculate average
         avg = await analytics_service.get_daily_average_vehicles(30)
@@ -177,21 +172,20 @@ class TestAnalyticsServiceDurations:
         # Create and exit red vehicles with known durations
         for i, hours in enumerate([2, 3, 4]):  # Average should be 3 hours
             # Entry
-            entry_data = VehicleEntry(
+            session = await parking_service.register_vehicle_entry(
                 license_plate=f"REDTEST{i}",
                 color="Red",
                 brand="Toyota",
                 spot_type=SpotType.REGULAR
             )
-            session = await parking_service.register_vehicle_entry(entry_data)
             
             # Manually set exit time for accurate duration calculation
-            session_obj = await parking_service.db.get(ParkingSession, session.id)
+            session_obj = await parking_service.parking_session_repo.get_by_id(session.id)
             session_obj.exit_time = session_obj.entry_time + timedelta(hours=hours)
-            await parking_service.db.commit()
+            await parking_service.parking_session_repo.update(session_obj)
             print(f"Entry Time: {session_obj.entry_time}, Exit Time: {session_obj.exit_time}, Hours: {hours}")
             
-            exit_data = VehicleExit(license_plate=f"REDTEST{i}")
+            
             # No need to call register_vehicle_exit as we manually set exit_time and committed
             # await parking_service.register_vehicle_exit(exit_data)
         
@@ -204,22 +198,20 @@ class TestAnalyticsServiceDurations:
         
         # Create sessions with known amounts
         # Vehicle 1: 2 hours = $10
-        entry1 = VehicleEntry(license_plate="SPEND1", color="Blue", brand="Ford", spot_type=SpotType.REGULAR)
-        session1 = await parking_service.register_vehicle_entry(entry1)
-        session_obj1 = await parking_service.db.get(ParkingSession, session1.id)
+        session1 = await parking_service.register_vehicle_entry(license_plate="SPEND1", color="Blue", brand="Ford", spot_type=SpotType.REGULAR)
+        session_obj1 = await parking_service.parking_session_repo.get_by_id(session1.id)
         session_obj1.exit_time = session_obj1.entry_time + timedelta(hours=2)
         session_obj1.amount_paid = 10.0
         session_obj1.payment_status = PaymentStatus.PAID
-        await parking_service.db.commit()
+        await parking_service.parking_session_repo.update(session_obj1)
 
         # Vehicle 2: 4 hours = $20
-        entry2 = VehicleEntry(license_plate="SPEND2", color="Red", brand="Honda", spot_type=SpotType.REGULAR)
-        session2 = await parking_service.register_vehicle_entry(entry2)
-        session_obj2 = await parking_service.db.get(ParkingSession, session2.id)
+        session2 = await parking_service.register_vehicle_entry(license_plate="SPEND2", color="Red", brand="Honda", spot_type=SpotType.REGULAR)
+        session_obj2 = await parking_service.parking_session_repo.get_by_id(session2.id)
         session_obj2.exit_time = session_obj2.entry_time + timedelta(hours=4)
         session_obj2.amount_paid = 20.0
         session_obj2.payment_status = PaymentStatus.PAID
-        await parking_service.db.commit()
+        await parking_service.parking_session_repo.update(session_obj2)
         
         avg_spending = await analytics_service.get_average_daily_spending(30)
         assert avg_spending == pytest.approx(15.0, 0.1)  # (10 + 20) / 2
@@ -255,37 +247,39 @@ class TestAnalyticsServiceDistributions:
     
     async def test_get_parking_analytics(self, analytics_service, parking_service, init_parking_spots):
         """Test comprehensive parking analytics."""
-        # Create some test data for today
-        # Register and exit a vehicle today
-        # Create some test data for today
-        today_start_time = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        from unittest.mock import patch # Import patch here
+        with freeze_time(datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)):
+            # Create some test data for today
+            today_start_time = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
-        # Register and exit a vehicle today
-        entry_data = VehicleEntry(
-            license_plate="TODAY1",
-            color="Green",
-            brand="Tesla",
-            spot_type=SpotType.REGULAR
-        )
-        session1 = await parking_service.register_vehicle_entry(entry_data)
-        session_obj1 = await parking_service.db.get(ParkingSession, session1.id)
-        session_obj1.entry_time = today_start_time + timedelta(hours=1) # Set entry time to today
-        session_obj1.exit_time = session_obj1.entry_time + timedelta(hours=3)
-        session_obj1.amount_paid = 15.0
-        session_obj1.payment_status = PaymentStatus.PAID
-        await parking_service.db.commit()
-        
-        # Register another vehicle (still parked)
-        entry_data2 = VehicleEntry(
-            license_plate="TODAY2",
-            color="Yellow",
-            brand="Nissan",
-            spot_type=SpotType.REGULAR
-        )
-        session2 = await parking_service.register_vehicle_entry(entry_data2)
-        session_obj2 = await parking_service.db.get(ParkingSession, session2.id)
-        session_obj2.entry_time = today_start_time + timedelta(hours=2) # Set entry time to today
-        await parking_service.db.commit()
+            # Register and exit a vehicle today
+            with patch('src.application.services.parking_service.datetime') as mock_dt:
+                mock_dt.now.return_value = today_start_time + timedelta(hours=1)
+                mock_dt.timezone = timezone
+                session1 = await parking_service.register_vehicle_entry(
+                    license_plate="TODAY1",
+                    color="Green",
+                    brand="Tesla",
+                    spot_type=SpotType.REGULAR
+                )
+            # Exit session1
+            with patch('src.application.services.parking_service.datetime') as mock_dt:
+                mock_dt.now.return_value = today_start_time + timedelta(hours=4) # Exit 3 hours after entry
+                mock_dt.timezone = timezone
+                vehicle1 = await parking_service.vehicle_repo.get_by_id(session1.vehicle_id)
+                await parking_service.register_vehicle_exit(vehicle1.license_plate)
+            session1 = await parking_service.parking_session_repo.get_by_id(session1.id) # Refresh session1 after exit
+
+            # Register another vehicle (still parked)
+            with patch('src.application.services.parking_service.datetime') as mock_dt:
+                mock_dt.now.return_value = today_start_time + timedelta(hours=2)
+                mock_dt.timezone = timezone
+                session2 = await parking_service.register_vehicle_entry(
+                    license_plate="TODAY2",
+                    color="Yellow",
+                    brand="Nissan",
+                    spot_type=SpotType.REGULAR
+                )
         
         analytics = await analytics_service.get_parking_analytics()
         

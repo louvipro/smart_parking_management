@@ -1,3 +1,9 @@
+import sys
+import os
+
+# Add the project root to the sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import streamlit as st
 from src.infrastructure.persistence.database import init_db
 
