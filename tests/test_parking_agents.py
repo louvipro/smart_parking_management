@@ -1,40 +1,17 @@
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
-from datetime import datetime, timedelta
+from unittest.mock import patch, AsyncMock
 import os
 
 from src.infrastructure.ml_agents.parking_agent import ParkingAssistant
-from src.application.services.parking_service import ParkingService
-from src.infrastructure.api.schemas.parking import VehicleEntry, SpotType, VehicleExit
-
-
-@pytest.fixture
-async def setup_agent_test_data(db_session):
-    """Set up test data for agent testing."""
-    # This fixture is kept for tests that might need a pre-populated DB,
-    # but individual tool tests will now mock the service layer.
-    parking_service = ParkingService(db_session)
-    vehicles = [
-        ("RED001", "Red", "Toyota"),
-        ("RED002", "Red", "Honda"),
-        ("BLUE001", "Blue", "Ford"),
-        ("WHITE001", "White", "BMW"),
-    ]
-    for plate, color, brand in vehicles:
-        entry_data = VehicleEntry(
-            license_plate=plate, color=color, brand=brand, spot_type=SpotType.REGULAR
-        )
-        await parking_service.register_vehicle_entry(entry_data)
-    return len(vehicles)
 
 
 class TestParkingAgentTools:
     """Test the parking agent tools used by CrewAI agents."""
 
     @pytest.fixture
-    def assistant(self, db_session):
+    def assistant(self):
         """Create a ParkingAssistant instance."""
-        return ParkingAssistant(db_session=db_session)
+        return ParkingAssistant()
 
     def get_tool_func(self, assistant, tool_name):
         """Helper to find a tool's function by its name."""
@@ -87,29 +64,29 @@ class TestParkingAgentTools:
     def test_get_parking_status_tool(self, MockParkingService, assistant):
         """Test the get_parking_status tool functionality."""
         mock_service = MockParkingService.return_value
-        mock_service.get_parking_status = AsyncMock(return_value=AsyncMock(
-            total_spots=15,
-            occupied_spots=1,
-            available_spots=14,
-            occupancy_rate=6.67
-        ))
+        mock_service.get_parking_status = AsyncMock(return_value={
+            'total_spots': 15,
+            'occupied_spots': 1,
+            'available_spots': 14,
+            'occupancy_percentage': 6.67
+        })
 
         tool_func = self.get_tool_func(assistant, "get_parking_status")
 
         result = tool_func(None)
         assert isinstance(result, str)
         assert "Total spots: 15" in result
-        assert "Available: 14" in result
-        assert "Occupancy rate: 6.67%" in result
+        assert "Available spots: 14" in result
+        assert "Occupancy rate: 6.7%" in result
 
 
 class TestParkingAgentIntegration:
     """Test the full parking agent integration."""
 
     @pytest.fixture
-    def assistant(self, db_session):
+    def assistant(self):
         """Create a ParkingAssistant instance."""
-        return ParkingAssistant(db_session=db_session)
+        return ParkingAssistant()
 
     def test_agent_tool_creation(self, assistant):
         """Test that agents are created with the correct tools."""
@@ -137,29 +114,29 @@ class TestParkingAgentIntegration:
 
     @patch('src.infrastructure.ml_agents.parking_agent.Crew')
     @patch.dict(os.environ, {'OPENAI_API_KEY': 'invalid_key'})
-    async def test_process_query_api_error(self, MockCrew, assistant):
+    def test_process_query_api_error(self, MockCrew, assistant):
         """Test process_query handles API key/connection errors."""
         mock_crew_instance = MockCrew.return_value
         mock_crew_instance.kickoff.side_effect = Exception("API key error or connection issue")
 
-        response = await assistant.process_query("How many cars are parked?")
+        response = assistant.process_query("How many cars are parked?")
         assert "I need an AI model to process your query." in response
         assert "API key error or connection issue" in response
 
     @patch('src.infrastructure.ml_agents.parking_agent.Crew')
-    async def test_process_query_generic_error(self, MockCrew, assistant):
+    def test_process_query_generic_error(self, MockCrew, assistant):
         """Test process_query handles generic exceptions."""
         mock_crew_instance = MockCrew.return_value
         mock_crew_instance.kickoff.side_effect = Exception("Something unexpected happened")
 
-        response = await assistant.process_query("What is the revenue?")
-        assert "I encountered an error: Something unexpected happened" in response
+        response = assistant.process_query("What is the revenue?")
+        assert "Sorry, I encountered an error: Something unexpected happened" in response
 
     @patch('src.infrastructure.ml_agents.parking_agent.ChatOpenAI')
     @patch.dict(os.environ, {'OPENAI_MODEL_NAME': 'ollama/test-model', 'OPENAI_API_BASE': 'http://localhost:8000'})
-    def test_ollama_model_initialization(self, MockChatOpenAI, db_session):
+    def test_ollama_model_initialization(self, MockChatOpenAI):
         """Test that ChatOpenAI is initialized correctly for Ollama models."""
-        ParkingAssistant(db_session=db_session)
+        ParkingAssistant()
         MockChatOpenAI.assert_called_once_with(
             model='test-model',
             openai_api_key='dummy',

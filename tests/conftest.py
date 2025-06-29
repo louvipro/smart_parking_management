@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.pool import NullPool
 import tempfile
@@ -7,7 +6,7 @@ import os
 from freezegun import freeze_time
 from datetime import datetime, timedelta, timezone
 
-from src.infrastructure.persistence.models.models import Base, Vehicle, ParkingSpot, ParkingSession
+from src.infrastructure.persistence.models.models import Base
 from src.infrastructure.persistence.sqlalchemy_repositories.sqlalchemy_repositories import SQLAlchemyVehicleRepository, SQLAlchemyParkingSpotRepository, SQLAlchemyParkingSessionRepository
 from src.application.services.parking_service import ParkingService
 from src.application.services.analytics_service import AnalyticsService

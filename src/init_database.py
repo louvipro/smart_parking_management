@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""Initialize the parking database"""
+"""Initialize the parking database."""
 import os
 import sys
 

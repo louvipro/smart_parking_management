@@ -1,7 +1,6 @@
 from src.config.settings_env import Settings
 import os
 from unittest.mock import patch
-from src.shared.utils import initialize_logger
 from loguru import logger as loguru_logger
 
 

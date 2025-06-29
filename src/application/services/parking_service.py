@@ -1,10 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Optional, List, Dict
 from loguru import logger
 
 from src.application.repositories import AbstractVehicleRepository, AbstractParkingSpotRepository, AbstractParkingSessionRepository
 from src.domain.common import SpotType, PaymentStatus
-from src.domain.entities import Vehicle, ParkingSpot, ParkingSession
+from src.domain.entities import Vehicle, ParkingSession
 
 
 class ParkingService:

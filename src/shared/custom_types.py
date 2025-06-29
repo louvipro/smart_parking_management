@@ -5,8 +5,8 @@ from sqlalchemy import DateTime, TypeDecorator
 from sqlalchemy.dialects.sqlite import DATETIME as SQLITE_DATETIME
 
 class UTCDateTime(TypeDecorator):
-    """
-    A custom SQLAlchemy type to store timezone-aware datetime objects in UTC
+    """A custom SQLAlchemy type to store timezone-aware datetime objects in UTC.
+
     as naive datetime objects in a SQLite database.
     """
     impl = DateTime

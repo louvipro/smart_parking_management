@@ -33,7 +33,7 @@ install-dev:install-uv
 STREAMLIT_PORT ?= 8501
 run-frontend:
 	@echo "Running frontend"
-	cd src; $(UV) run streamlit run main_frontend.py --server.port $(STREAMLIT_PORT) --server.headless True;
+	$(UV) run streamlit run src/infrastructure/ui/0_Home.py --server.port $(STREAMLIT_PORT) --server.headless True;
 
 
 

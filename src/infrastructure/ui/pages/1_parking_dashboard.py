@@ -7,6 +7,11 @@ import streamlit as st
 
 from src.infrastructure.persistence.database import AsyncSessionLocal
 from src.infrastructure.api.schemas.parking import SpotType, VehicleEntry, VehicleExit
+from src.infrastructure.persistence.sqlalchemy_repositories.sqlalchemy_repositories import (
+    SQLAlchemyVehicleRepository,
+    SQLAlchemyParkingSpotRepository,
+    SQLAlchemyParkingSessionRepository,
+)
 from src.application.services.analytics_service import AnalyticsService
 from src.application.services.parking_service import ParkingService
 
@@ -22,32 +27,52 @@ st.title("🚗 Parking Management Dashboard")
 
 async def get_parking_status():
     async with AsyncSessionLocal() as db:
-        service = ParkingService(db)
+        vehicle_repo = SQLAlchemyVehicleRepository(db)
+        spot_repo = SQLAlchemyParkingSpotRepository(db)
+        session_repo = SQLAlchemyParkingSessionRepository(db)
+        service = ParkingService(vehicle_repo, spot_repo, session_repo)
         return await service.get_parking_status()
 
 
 async def get_active_sessions():
     async with AsyncSessionLocal() as db:
-        service = ParkingService(db)
+        vehicle_repo = SQLAlchemyVehicleRepository(db)
+        spot_repo = SQLAlchemyParkingSpotRepository(db)
+        session_repo = SQLAlchemyParkingSessionRepository(db)
+        service = ParkingService(vehicle_repo, spot_repo, session_repo)
         return await service.get_active_sessions()
 
 
 async def get_analytics():
     async with AsyncSessionLocal() as db:
-        analytics = AnalyticsService(db)
+        vehicle_repo = SQLAlchemyVehicleRepository(db)
+        session_repo = SQLAlchemyParkingSessionRepository(db)
+        spot_repo = SQLAlchemyParkingSpotRepository(db)
+        analytics = AnalyticsService(vehicle_repo, session_repo, spot_repo)
         return await analytics.get_parking_analytics()
 
 
 async def register_entry(vehicle_data):
     async with AsyncSessionLocal() as db:
-        service = ParkingService(db)
-        return await service.register_vehicle_entry(vehicle_data)
+        vehicle_repo = SQLAlchemyVehicleRepository(db)
+        spot_repo = SQLAlchemyParkingSpotRepository(db)
+        session_repo = SQLAlchemyParkingSessionRepository(db)
+        service = ParkingService(vehicle_repo, spot_repo, session_repo)
+        return await service.register_vehicle_entry(
+            license_plate=vehicle_data.license_plate,
+            color=vehicle_data.color,
+            brand=vehicle_data.brand,
+            spot_type=vehicle_data.spot_type
+        )
 
 
 async def register_exit(exit_data):
     async with AsyncSessionLocal() as db:
-        service = ParkingService(db)
-        return await service.register_vehicle_exit(exit_data)
+        vehicle_repo = SQLAlchemyVehicleRepository(db)
+        spot_repo = SQLAlchemyParkingSpotRepository(db)
+        session_repo = SQLAlchemyParkingSessionRepository(db)
+        service = ParkingService(vehicle_repo, spot_repo, session_repo)
+        return await service.register_vehicle_exit(exit_data.license_plate)
 
 
 # Get current status
@@ -68,21 +93,21 @@ col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
     st.metric(
         "Total Spots",
-        status.total_spots,
+        status['total_spots'],
         delta=None
     )
 
 with col2:
     st.metric(
         "Occupied",
-        status.occupied_spots,
-        delta=f"{status.occupancy_rate}%"
+        status['occupied_spots'],
+        delta=f"{status['occupancy_rate']}%"
     )
 
 with col3:
     st.metric(
         "Available",
-        status.available_spots,
+        status['available_spots'],
         delta=None
     )
 
@@ -203,7 +228,7 @@ with tab3:
 
     # Create floor visualization
     floors_data = []
-    for floor in status.floors:
+    for floor in status['floors']:
         floors_data.extend([
             {"Floor": f"Floor {floor['floor']}",
                 "Status": "Occupied", "Count": floor['occupied']},
@@ -226,16 +251,16 @@ with tab4:
 
     with col1:
         # Occupancy visualization
-        st.metric("Occupancy Rate", f"{status.occupancy_rate}%",
-                  delta=f"{status.occupied_spots} vehicles")
+        st.metric("Occupancy Rate", f"{status['occupancy_rate']}%",
+                  delta=f"{status['occupied_spots']} vehicles")
 
         # Progress bar for occupancy
-        st.progress(status.occupancy_rate / 100)
+        st.progress(status['occupancy_rate'] / 100)
 
         # Occupancy breakdown
         occupancy_data = pd.DataFrame({
             'Status': ['Occupied', 'Available'],
-            'Count': [status.occupied_spots, status.available_spots]
+            'Count': [status['occupied_spots'], status['available_spots']]
         })
         st.bar_chart(occupancy_data.set_index('Status'))
 
@@ -248,6 +273,6 @@ with tab4:
 
         # Show floor breakdown
         st.write("**Floor Breakdown:**")
-        for floor in status.floors:
+        for floor in status['floors']:
             st.write(
                 f"Floor {floor['floor']}: {floor['occupied']}/{floor['total']} occupied")

@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import create_engine, Column, Integer
 from sqlalchemy.orm import sessionmaker, declarative_base
 from src.shared.custom_types import UTCDateTime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 Base = declarative_base()
 

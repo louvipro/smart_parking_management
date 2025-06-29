@@ -1,8 +1,6 @@
-from datetime import datetime, timedelta, date, timezone
 from typing import List, Dict
 
 from src.application.repositories import AbstractVehicleRepository, AbstractParkingSessionRepository, AbstractParkingSpotRepository
-from src.domain.common import PaymentStatus
 
 
 class AnalyticsService:

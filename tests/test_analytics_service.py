@@ -1,14 +1,9 @@
 import pytest
 from datetime import datetime, timedelta, timezone
 from freezegun import freeze_time
-from unittest.mock import patch
-from unittest.mock import patch
-from unittest.mock import patch
 
 from src.application.services.analytics_service import AnalyticsService
-from src.application.services.parking_service import ParkingService
 from src.domain.common import SpotType, PaymentStatus
-from src.domain.entities import ParkingSession
 from src.infrastructure.persistence.models.models import ParkingSession as ORMParkingSession
 from sqlalchemy import delete
 
@@ -247,43 +242,31 @@ class TestAnalyticsServiceDistributions:
     
     async def test_get_parking_analytics(self, analytics_service, parking_service, init_parking_spots):
         """Test comprehensive parking analytics."""
-        from unittest.mock import patch # Import patch here
-        with freeze_time(datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)):
-            # Create some test data for today
-            today_start_time = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-
+        today = datetime(2025, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
+        
+        with freeze_time(today):
             # Register and exit a vehicle today
-            with patch('src.application.services.parking_service.datetime') as mock_dt:
-                mock_dt.now.return_value = today_start_time + timedelta(hours=1)
-                mock_dt.timezone = timezone
-                session1 = await parking_service.register_vehicle_entry(
-                    license_plate="TODAY1",
-                    color="Green",
-                    brand="Tesla",
-                    spot_type=SpotType.REGULAR
+            entry_time = today - timedelta(hours=5)
+            exit_time = today - timedelta(hours=2) # 3 hours duration
+
+            with freeze_time(entry_time):
+                await parking_service.register_vehicle_entry(
+                    license_plate="TODAY1", color="Green", brand="Tesla", spot_type=SpotType.REGULAR
                 )
-            # Exit session1
-            with patch('src.application.services.parking_service.datetime') as mock_dt:
-                mock_dt.now.return_value = today_start_time + timedelta(hours=4) # Exit 3 hours after entry
-                mock_dt.timezone = timezone
-                vehicle1 = await parking_service.vehicle_repo.get_by_id(session1.vehicle_id)
-                await parking_service.register_vehicle_exit(vehicle1.license_plate)
-            session1 = await parking_service.parking_session_repo.get_by_id(session1.id) # Refresh session1 after exit
+            
+            with freeze_time(exit_time):
+                await parking_service.register_vehicle_exit("TODAY1")
 
             # Register another vehicle (still parked)
-            with patch('src.application.services.parking_service.datetime') as mock_dt:
-                mock_dt.now.return_value = today_start_time + timedelta(hours=2)
-                mock_dt.timezone = timezone
-                session2 = await parking_service.register_vehicle_entry(
-                    license_plate="TODAY2",
-                    color="Yellow",
-                    brand="Nissan",
-                    spot_type=SpotType.REGULAR
+            with freeze_time(today - timedelta(hours=1)):
+                await parking_service.register_vehicle_entry(
+                    license_plate="TODAY2", color="Yellow", brand="Nissan", spot_type=SpotType.REGULAR
                 )
-        
-        analytics = await analytics_service.get_parking_analytics()
-        
-        assert analytics["current_occupancy"] == 1  # TODAY2 is still parked
-        assert analytics["today_revenue"] == 15.0  # 3 hours * $5
-        assert analytics["today_vehicles"] == 2  # Both vehicles entered today
-        assert analytics["average_duration_hours"] == pytest.approx(3.0, 0.1)
+
+            # Now, get analytics
+            analytics = await analytics_service.get_parking_analytics()
+
+            assert analytics["current_occupancy"] == 1
+            assert analytics["today_revenue"] == pytest.approx(15.0, 0.1)
+            assert analytics["today_vehicles"] == 2
+            assert analytics["average_duration_hours"] == pytest.approx(3.0, 0.1)

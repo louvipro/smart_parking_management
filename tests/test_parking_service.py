@@ -1,11 +1,8 @@
 import pytest
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch
+from datetime import timedelta
 from freezegun import freeze_time
 
-from src.application.services.parking_service import ParkingService
 from src.domain.common import SpotType, PaymentStatus
-from src.domain.entities import Vehicle, ParkingSpot, ParkingSession
 
 
 @pytest.fixture
@@ -44,7 +41,6 @@ class TestParkingServiceVehicleEntry:
         assert response.exit_time is None
         
         # Verify database state
-        from sqlalchemy import select
         
         # Check vehicle was created
         vehicle = await parking_service.vehicle_repo.get_by_license_plate("NEW123")

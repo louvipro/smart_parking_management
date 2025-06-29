@@ -1,12 +1,10 @@
 import pytest
-from sqlalchemy import select, create_engine, inspect
+from sqlalchemy import select, inspect
 from datetime import datetime, timedelta
 import os
-from unittest.mock import patch, MagicMock
-import sys
 import tempfile
 
-from src.infrastructure.persistence.models.models import Vehicle, ParkingSpot, ParkingSession, Base
+from src.infrastructure.persistence.models.models import Vehicle, ParkingSpot, ParkingSession
 from src.infrastructure.persistence.database import init_db # Import init_db directly
 
 

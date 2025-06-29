@@ -3,3 +3,9 @@ from .abstract_repositories import (
     AbstractParkingSpotRepository,
     AbstractParkingSessionRepository,
 )
+
+__all__ = [
+    "AbstractVehicleRepository",
+    "AbstractParkingSpotRepository",
+    "AbstractParkingSessionRepository",
+]

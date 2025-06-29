@@ -1,205 +1,190 @@
-# 🚗 Smart Parking Management
+# 🚗 Smart Parking Management System
 
-A web application built with Python 3.12 that manages a parking system lifecycle and includes an AI conversational agent for querying parking data.
+Welcome to the Smart Parking Management System! This project provides a complete web application to manage a parking facility, enhanced with an AI-powered assistant to query data using natural language.
 
-## Features
+---
 
-### Core Functionalities
+### 📖 Table of Contents
+- [✨ Features](#-features)
+- [💻 Technology Stack](#-technology-stack)
+- [🚀 Getting Started](#-getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation & Setup](#installation--setup)
+- [🏃 Running the Application](#-running-the-application)
+- [🐳 Docker Deployment](#-docker-deployment)
+- [🔧 Usage](#-usage)
+- [⚙️ Configuration](#️-configuration)
+- [🏗️ Architecture](#️-architecture)
+- [🧪 Development & Testing](#-development--testing)
 
-- **Vehicle Entry/Exit Management**: Track vehicles with timestamps and automatic spot assignment
-- **Payment Calculation**: Automatic fee calculation based on parking duration
-- **Real-time Status**: Monitor parking occupancy and availability
-- **Multi-floor Support**: Manage parking spots across multiple floors with different spot types (regular, disabled, VIP)
+---
 
-### AI Conversational Agent
+## ✨ Features
 
-The AI-powered chatbot can answer queries like:
+### Core Parking Management
+- **Vehicle Entry/Exit**: Track vehicle entries and exits with precise timestamps and automatic spot assignments.
+- **Payment Calculation**: Automatically calculate parking fees based on duration.
+- **Real-time Dashboard**: Monitor parking occupancy, availability, and revenue in real-time.
+- **Multi-floor Support**: Manage spots across multiple floors with types like Regular, Disabled, and VIP.
 
-- "How many blue cars are currently in the parking?"
-- "How much money have we generated in the last hour?"
-- "How many cars are currently parked?"
-- "What's the average daily number of cars using the parking?"
-- "What's the average daily spending per user?"
+### 🤖 AI Conversational Assistant
+Ask the AI anything about the parking status:
+- "How many blue cars are currently parked?"
+- "How much money was generated in the last hour?"
+- "What is the current occupancy rate?"
 - "What's the average parking duration for black cars?"
 
-## Technology Stack
+---
+
+## 💻 Technology Stack
 
 - **Python 3.12**
-- **Streamlit** - Web framework for the dashboard
-- **CrewAI** - AI agent system for natural language queries
-- **LiteLLM** - Unified interface for multiple LLM providers
-- **SQLAlchemy** - Database ORM with async support
-- **Pydantic** - Data validation
-- **Docker** - Containerization
+- **Streamlit**: For the interactive web dashboard.
+- **CrewAI**: For the AI agent system.
+- **LiteLLM**: As a unified interface for LLM providers (OpenAI, Ollama, etc.).
+- **SQLAlchemy**: For robust, asynchronous database communication.
+- **Pydantic**: For strict data validation.
+- **Docker**: For containerized deployment.
 
-## Installation
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
+- **Python 3.12**
+- **Git**
+- **Docker** (Optional, for container deployment)
 
-- Python 3.12
-- Docker (optional, for containerized deployment)
+### Installation & Setup
 
-### Quick Start
-
-1. **Clone the repository**
-
+**1. Clone the Repository**
 ```bash
-git clone <repository-url>
-cd smart_parking_management
+git clone https://github.com/your-username/smart-parking-management.git
+cd smart-parking-management
 ```
 
-2. **Create environment file**
+**2. Create Environment File**
 
+This file stores your API keys and configuration.
+
+- **On macOS or Linux:**
+  ```bash
+  cp .env.example .env
+  ```
+- **On Windows:**
+  ```bash
+  copy .env.example .env
+  ```
+
+**3. Install Dependencies**
+
+Dependencies are managed with `uv`. The following commands will create a virtual environment and install all required packages.
+
+- **On macOS or Linux (Recommended):**
+  ```bash
+  # This command uses the Makefile to install dependencies
+  make install-dev
+  ```
+
+- **On Windows (Manual):**
+  ```bash
+  # Install uv if you haven't already
+  pip install uv
+  
+  # Create a virtual environment
+  uv venv
+  
+  # Activate the virtual environment
+  # (Use `.venv\Scripts\activate` for cmd, or `source .venv/bin/activate` for Git Bash/WSL)
+  source .venv/bin/activate 
+  
+  # Sync dependencies
+  uv sync
+  ```
+
+---
+
+## 🏃 Running the Application
+
+First, ensure your database is initialized. This command is safe to run multiple times.
 ```bash
-cp .env.example .env
+python src/init_database.py
 ```
 
-3. **Install dependencies**
+Then, launch the Streamlit frontend.
+
+- **On macOS or Linux (Recommended):**
+  ```bash
+  make run-frontend
+  ```
+
+- **On Windows (Manual):**
+  ```bash
+  uv run streamlit run src/infrastructure/ui/0_Home.py
+  ```
+
+Finally, open your browser and go to **http://localhost:8501**.
+
+---
+
+## 🐳 Docker Deployment
+
+The easiest way to run the entire stack, including the Ollama LLM for local AI, is with Docker Compose.
 
 ```bash
-make install-prod
+# This command builds the images and starts the services.
+docker-compose up --build
 ```
+This will start the Streamlit application and the Ollama service. You can then use a local model like `qwen2.5:0.5b` without needing an API key.
 
-4. **Run the application**
+---
 
-Option A: With local LLM (Ollama)
-
-```bash
-# Install and start Ollama
-make install-ollama
-make run-ollama
-
-# Download the model
-make download-ollama-model
-
-# Run the application
-make run-app
-```
-
-Option B: With OpenAI or other providers
-
-```bash
-# Edit .env file and set:
-# OPENAI_API_KEY=your-api-key
-# OPENAI_MODEL_NAME=gemma:2b
-
-# Run the application
-make run-app
-```
-
-5. **Access the application**
-
-- Streamlit UI: http://localhost:8501
-
-## Docker Deployment
-
-### Using Docker Compose (Recommended)
-
-```bash
-docker-compose up
-```
-
-This will start:
-
-- Parking management system (Streamlit)
-- Ollama for local LLM support
-
-### Building Docker Image
-
-```bash
-docker build -t smart_parking_management .
-docker run -p 8501:8501 smart_parking_management
-```
-
-## Usage
+## 🔧 Usage
 
 ### 1. Parking Dashboard
-
-Navigate to the Parking Dashboard to:
-
-- Register vehicle entries with license plate, color, and brand
-- Process vehicle exits and calculate payments
-- View real-time parking status
-- Monitor floor-wise occupancy
+Navigate to the **Parking Dashboard** to:
+- Register vehicle entries and exits.
+- View real-time parking status and floor-wise occupancy.
+- Monitor revenue and vehicle flow.
 
 ### 2. AI Assistant
+Navigate to the **AI Assistant** to:
+- Ask natural language questions about parking data.
+- Get instant insights on revenue, occupancy, and vehicle statistics.
 
-Use the AI Assistant to:
+---
 
-- Ask natural language questions about parking data
-- Get insights on revenue and occupancy
-- Query vehicle statistics by color or brand
-- Analyze parking patterns
+## ⚙️ Configuration
 
-## Configuration
+All configuration is managed via the `.env` file:
+- `DEV_MODE`: Set to `True` for detailed debug logging.
+- `DATABASE_URL`: The connection string for your database (defaults to SQLite).
+- `OPENAI_API_KEY`: Your API key for providers like OpenAI.
+- `OPENAI_MODEL_NAME`: The model to use (e.g., `gpt-4o-mini`, `ollama/qwen2.5:0.5b`).
+- `HOURLY_RATE`: The parking fee per hour.
 
-### Environment Variables
+---
 
-Key configuration options in `.env`:
+## 🏗️ Architecture
 
-- `DEV_MODE` - Enable debug logging
-- `DATABASE_URL` - Database connection string
-- `OPENAI_API_KEY` - LLM provider API key
-- `OPENAI_MODEL_NAME` - Model to use (e.g., gpt-3.5-turbo, ollama/qwen2.5)
-- `HOURLY_RATE` - Parking fee per hour
+This project follows **Clean Architecture** principles to ensure a separation of concerns, making it scalable, testable, and maintainable.
 
-### Database
+- **Domain**: Contains the core business logic and entities, with no external dependencies.
+- **Application**: Orchestrates the domain logic and defines interfaces for external services.
+- **Infrastructure**: Provides concrete implementations for databases, AI agents, and the UI.
 
-The system uses SQLite by default. For production, configure PostgreSQL:
+---
 
-```
-DATABASE_URL=postgresql://user:password@host:port/dbname
-ASYNC_DATABASE_URL=postgresql+asyncpg://user:password@host:port/dbname
-```
+## 🧪 Development & Testing
 
-## Architecture
+We use `pytest` for testing.
 
-### Components
+- **On macOS or Linux (Recommended):**
+  ```bash
+  make test
+  ```
 
-1. **Frontend (Streamlit)**: User interface for parking operations and AI chat
-2. **Database (SQLAlchemy)**: Data persistence with async support
-3. **AI Agent (CrewAI)**: Natural language processing for queries using AI agents with tools
-4. **Services Layer**: Business logic for parking operations and analytics
-
-### Data Models
-
-- **Vehicle**: Stores vehicle information (license plate, color, brand)
-- **ParkingSpot**: Represents individual parking spaces
-- **ParkingSession**: Tracks vehicle entry/exit and payments
-
-## Development
-
-### Running Tests
-
-```bash
-make test
-```
-
-### Code Quality
-
-```bash
-make pre-commit  # Run linting and formatting
-```
-
-### Adding New Features
-
-1. Add models in `src/database/models.py`
-2. Create Pydantic schemas in `src/schemas/`
-3. Implement business logic in `src/services/`
-4. Create UI components in `src/pages/`
-
-## Development Best Practices
-
-To ensure the long-term health and maintainability of this project, all contributors should adhere to the following principles:
-
-- **Keep Documentation Updated**: Whenever you introduce a new feature, modify an existing one, or change a dependency, update the documentation to reflect your changes. Accurate documentation is crucial for collaboration and future development.
-
-- **Embrace Test-Driven Development (TDD)**: Write unit tests _before_ writing the implementation code. This practice ensures that your code is testable, reliable, and meets requirements from the start. All new features should be accompanied by corresponding tests.
-
-- **Maintain a Clean Architecture**: The project follows a service-based architecture to separate concerns. Continue to respect these boundaries by keeping business logic within the service layer, database interactions in the data layer, and UI code in the presentation layer. This makes the system easier to understand, test, and scale.
-
-- **Prioritize Robust Solutions**: Always favor idempotent, automated, and self-correcting mechanisms over manual, one-off scripts. For example, database initialization should handle pre-existing data gracefully rather than requiring a separate, manual setup command.
-
-## License
-
-This project is created for educational purposes as part of a technical assessment.
+- **On Windows (Manual):**
+  ```bash
+  uv run pytest tests/
+  ```

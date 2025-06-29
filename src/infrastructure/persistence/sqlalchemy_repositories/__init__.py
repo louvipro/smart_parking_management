@@ -3,3 +3,9 @@ from .sqlalchemy_repositories import (
     SQLAlchemyParkingSpotRepository,
     SQLAlchemyParkingSessionRepository,
 )
+
+__all__ = [
+    "SQLAlchemyVehicleRepository",
+    "SQLAlchemyParkingSpotRepository",
+    "SQLAlchemyParkingSessionRepository",
+]

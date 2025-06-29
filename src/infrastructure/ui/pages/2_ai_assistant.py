@@ -1,12 +1,6 @@
-import asyncio
-from datetime import datetime
-
 import streamlit as st
 
-from src.infrastructure.persistence.database import AsyncSessionLocal
-from src.infrastructure.ml_agents.parking_agent_hybrid import HybridParkingAssistant
-from src.application.services.analytics_service import AnalyticsService
-from src.application.services.parking_service import ParkingService
+from src.infrastructure.ml_agents.parking_agent import ParkingAssistant
 
 
 st.set_page_config(
@@ -43,7 +37,7 @@ if "pending_query" not in st.session_state:
 
 # Initialize parking assistant
 if "assistant" not in st.session_state:
-    st.session_state.assistant = HybridParkingAssistant()
+    st.session_state.assistant = ParkingAssistant()
 
 # Display chat history
 for message in st.session_state.messages:
@@ -59,13 +53,7 @@ if st.session_state.pending_query:
     with st.chat_message("assistant"):
         with st.spinner("🤔 Analyzing your question and checking parking data..."):
             try:
-                # Use run_sync to execute the async method
-                import asyncio
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                response = loop.run_until_complete(
-                    st.session_state.assistant.process_query(query))
-                loop.close()
+                response = st.session_state.assistant.process_query(query)
                 st.markdown(response)
                 st.session_state.messages.append(
                     {"role": "assistant", "content": response})
@@ -86,13 +74,7 @@ if prompt := st.chat_input("Ask about parking..."):
     with st.chat_message("assistant"):
         with st.spinner("🤔 Analyzing your question and checking parking data..."):
             try:
-                # Use run_sync to execute the async method
-                import asyncio
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                response = loop.run_until_complete(
-                    st.session_state.assistant.process_query(prompt))
-                loop.close()
+                response = st.session_state.assistant.process_query(prompt)
                 st.markdown(response)
                 st.session_state.messages.append(
                     {"role": "assistant", "content": response})

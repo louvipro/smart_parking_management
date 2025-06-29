@@ -1,7 +1,7 @@
-"""Database cleanup script to remove duplicates"""
-from sqlalchemy import create_engine, select, delete, func, update
+"""Database cleanup script to remove duplicates."""
+from sqlalchemy import create_engine, select, func, update
 from sqlalchemy.orm import Session
-from src.infrastructure.persistence.models.models import Vehicle, ParkingSession, Base
+from src.infrastructure.persistence.models.models import Vehicle, ParkingSession
 
 DATABASE_URL = "sqlite:///./parking.db"
 engine = create_engine(DATABASE_URL)

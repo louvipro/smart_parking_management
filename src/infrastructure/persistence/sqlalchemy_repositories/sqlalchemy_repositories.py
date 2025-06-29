@@ -2,7 +2,7 @@ from typing import List, Optional, Dict
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, extract, distinct, Integer, update
+from sqlalchemy import select, func, and_, or_, extract, update
 from sqlalchemy.orm import selectinload
 
 from src.domain.entities import Vehicle, ParkingSpot, ParkingSession

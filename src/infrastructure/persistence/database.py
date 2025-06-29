@@ -1,10 +1,8 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
-from pathlib import Path
 import os
 
-from src.infrastructure.persistence.models.models import Base, ParkingSpot
+from src.infrastructure.persistence.models.models import Base
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./parking.db")
 ASYNC_DATABASE_URL = os.getenv(

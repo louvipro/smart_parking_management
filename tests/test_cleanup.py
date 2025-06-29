@@ -1,7 +1,8 @@
 import pytest
-from sqlalchemy import create_engine, func, update, Column, Integer, String, Float, Boolean, ForeignKey
-from sqlalchemy.orm import sessionmaker, relationship, declarative_base
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey
+from sqlalchemy.orm import relationship, declarative_base, sessionmaker
 from datetime import datetime, timezone
+
 import os
 from unittest.mock import patch, MagicMock
 
@@ -136,7 +137,7 @@ def test_cleanup_duplicates(db_session_cleanup):
     mock_cleanup_session_factory.return_value.__exit__.return_value = None
 
     # Patch src.database.cleanup to use our test models and session
-    with patch('src.infrastructure.persistence.cleanup.Vehicle', TestVehicle),         patch('src.infrastructure.persistence.cleanup.ParkingSession', TestParkingSession),         patch('src.infrastructure.persistence.cleanup.Base', TestBase),         patch('src.infrastructure.persistence.cleanup.create_engine', lambda *args, **kwargs: test_engine),         patch('src.infrastructure.persistence.cleanup.Session', mock_cleanup_session_factory): # Patch Session to return the context manager
+    with patch('src.infrastructure.persistence.cleanup.Vehicle', TestVehicle),         patch('src.infrastructure.persistence.cleanup.ParkingSession', TestParkingSession),         patch('src.infrastructure.persistence.cleanup.create_engine', lambda *args, **kwargs: test_engine),         patch('src.infrastructure.persistence.cleanup.Session', mock_cleanup_session_factory): # Patch Session to return the context manager
 
         cleanup_duplicates()
 

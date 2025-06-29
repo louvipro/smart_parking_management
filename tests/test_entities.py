@@ -1,4 +1,3 @@
-import pytest
 from datetime import datetime, timedelta, timezone
 from src.domain.entities import Vehicle, ParkingSpot, ParkingSession
 from src.domain.common import SpotType, PaymentStatus
