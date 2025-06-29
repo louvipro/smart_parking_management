@@ -1,5 +1,5 @@
 """Database cleanup script to remove duplicates"""
-from sqlalchemy import create_engine, select, delete
+from sqlalchemy import create_engine, select, delete, func, update
 from sqlalchemy.orm import Session
 from database.models import Vehicle, ParkingSession, Base
 

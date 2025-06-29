@@ -257,6 +257,10 @@ class TestAnalyticsServiceDistributions:
         """Test comprehensive parking analytics."""
         # Create some test data for today
         # Register and exit a vehicle today
+        # Create some test data for today
+        today_start_time = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # Register and exit a vehicle today
         entry_data = VehicleEntry(
             license_plate="TODAY1",
             color="Green",
@@ -265,6 +269,7 @@ class TestAnalyticsServiceDistributions:
         )
         session1 = await parking_service.register_vehicle_entry(entry_data)
         session_obj1 = await parking_service.db.get(ParkingSession, session1.id)
+        session_obj1.entry_time = today_start_time + timedelta(hours=1) # Set entry time to today
         session_obj1.exit_time = session_obj1.entry_time + timedelta(hours=3)
         session_obj1.amount_paid = 15.0
         session_obj1.payment_status = PaymentStatus.PAID
@@ -277,7 +282,10 @@ class TestAnalyticsServiceDistributions:
             brand="Nissan",
             spot_type=SpotType.REGULAR
         )
-        await parking_service.register_vehicle_entry(entry_data2)
+        session2 = await parking_service.register_vehicle_entry(entry_data2)
+        session_obj2 = await parking_service.db.get(ParkingSession, session2.id)
+        session_obj2.entry_time = today_start_time + timedelta(hours=2) # Set entry time to today
+        await parking_service.db.commit()
         
         analytics = await analytics_service.get_parking_analytics()
         

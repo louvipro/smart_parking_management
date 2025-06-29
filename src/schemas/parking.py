@@ -108,6 +108,10 @@ class PaymentInfo(BaseModel):
     amount_due: float
     spot_number: str
 
+    @field_validator('license_plate')
+    def validate_license_plate(cls, v):  # pylint: disable=no-self-argument
+        return v.upper().strip()
+
 
 class ParkingStatus(BaseModel):
     total_spots: int

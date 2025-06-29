@@ -117,7 +117,7 @@ chat-ollama:
 test:
     # pytest runs from the root directory
 	@echo "${YELLOW}Running tests...${NC}"
-	@$(UV) run pytest tests
+	@$(UV) run pytest tests --cov=src --cov-report=term-missing
 
 test-ollama:
 	curl -X POST http://localhost:11434/api/generate -H "Content-Type: application/json" -d '{"model": "$(OLLAMA_MODEL_NAME)", "prompt": "Hello", "stream": false}'

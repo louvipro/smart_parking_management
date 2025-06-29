@@ -1,8 +1,12 @@
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, create_engine, inspect
 from datetime import datetime, timedelta
+import os
+from unittest.mock import patch, MagicMock
+import sys
 
-from database.models import Vehicle, ParkingSpot, ParkingSession
+from database.models import Vehicle, ParkingSpot, ParkingSession, Base
+from database.database import init_db # Import init_db directly
 
 
 class TestVehicleModel:
@@ -270,3 +274,64 @@ class TestParkingSessionModel:
         # Should have 2 active sessions (2 created, fixture creates one but occupies the spot)
         assert len(active_sessions) == 2
         assert all(session.exit_time is None for session in active_sessions)
+
+
+@pytest.fixture(scope="function")
+def init_db_fixture():
+    """Fixture to set up and tear down a clean in-memory database for init_db tests."""
+    # Temporarily override DATABASE_URL to ensure in-memory db for init_db
+    original_db_url = os.getenv("DATABASE_URL")
+    original_async_db_url = os.getenv("ASYNC_DATABASE_URL")
+    
+    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+    os.environ["ASYNC_DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+
+    # Import database.database here to ensure it picks up the patched environment variables
+    # and re-initializes its global engine variables.
+    import database.database
+    import importlib
+    importlib.reload(database.database)
+
+    # Ensure tables are dropped before each test run
+    database.database.Base.metadata.drop_all(database.database.engine)
+
+    yield database.database.engine # Yield the engine for inspection
+
+    # Clean up after test
+    database.database.Base.metadata.drop_all(database.database.engine)
+    
+    if original_db_url:
+        os.environ["DATABASE_URL"] = original_db_url
+    else:
+        del os.environ["DATABASE_URL"]
+    
+    if original_async_db_url:
+        os.environ["ASYNC_DATABASE_URL"] = original_async_db_url
+    else:
+        del os.environ["ASYNC_DATABASE_URL"]
+    
+    # Reload database.database again to restore original settings
+    importlib.reload(database.database)
+
+
+class TestDatabaseFunctions:
+    """Tests for functions in src/database/database.py."""
+
+    def test_init_db_creates_tables_and_spots(self, init_db_fixture):
+        """Test that init_db creates all tables and initial parking spots."""
+        engine = init_db_fixture
+        
+        # Call init_db
+        init_db()
+        
+        # Verify tables exist
+        inspector = inspect(engine)
+        assert inspector.has_table("vehicles")
+        assert inspector.has_table("parking_spots")
+        assert inspector.has_table("parking_sessions")
+        
+        # Verify initial parking spots are created
+        from sqlalchemy.orm import Session
+        with Session(engine) as session:
+            spot_count = session.query(ParkingSpot).count()
+            assert spot_count == 60 # 3 floors * 20 spots

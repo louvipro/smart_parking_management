@@ -194,7 +194,7 @@ class AnalyticsService:
         current_vehicles = await self.get_current_vehicle_count()
         
         # Today's revenue
-        today_start = datetime.combine(date.today(), datetime.min.time()).replace(tzinfo=timezone.utc)
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         today_revenue_result = await self.db.execute(
             select(func.sum(ParkingSession.amount_paid)).where(
                 and_(
