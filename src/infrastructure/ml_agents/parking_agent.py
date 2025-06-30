@@ -40,6 +40,7 @@ class ParkingAssistant:
         base_url = os.getenv("OPENAI_API_BASE", "http://localhost:11434/v1")
 
         # Prioritize Ollama if the model name contains "ollama"
+        print(f"DEBUG: Attempting to load model: {model_name}")
         if "ollama" in model_name.lower():
             self.llm = ChatOpenAI(
                 model=model_name.replace("ollama/", ""),
@@ -73,7 +74,7 @@ class ParkingAssistant:
             allow_delegation=False,
             tools=self.tools,
             llm=self.llm,
-            max_iter=7,
+            max_iter=15,
             force_tool_use=True
         )
     
@@ -153,7 +154,7 @@ class ParkingAssistant:
             Tool(name="get_current_count", func=get_current_count, description="Use to get the current total number of vehicles in the parking."),
             Tool(name="count_by_color", func=count_by_color, description="Use to count vehicles of a specific color. The input must be a color name."),
             Tool(name="get_revenue", func=get_recent_revenue, description="Use to get revenue generated in the last N hours. The input must be a number of hours."),
-            Tool(name="get_parking_status", func=get_parking_status, description="Use to get the current parking status, including available spots and occupancy rate."),
+            Tool(name="get_parking_status", func=get_parking_status, description="Use to get the current parking status, including total, occupied, and available spots, and occupancy rate. This tool provides a direct answer to queries about current parking status."),
             Tool(name="get_brand_distribution", func=get_brand_distribution, description="Use to get the distribution of car brands currently parked."),
         ]
 

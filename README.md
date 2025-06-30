@@ -80,27 +80,21 @@ This file stores your API keys and configuration.
 
 Dependencies are managed with `uv`. The following commands will create a virtual environment and install all required packages.
 
-- **On macOS or Linux (Recommended):**
-  ```bash
-  # This command uses the Makefile to install dependencies
-  make install-dev
-  ```
+```bash
+# Install uv if you haven't already
+pip install uv
 
-- **On Windows (Manual):**
-  ```bash
-  # Install uv if you haven't already
-  pip install uv
-  
-  # Create a virtual environment
-  uv venv
-  
-  # Activate the virtual environment
-  # (Use `.venv\Scripts\activate` for cmd, or `source .venv/bin/activate` for Git Bash/WSL)
-  source .venv/bin/activate 
-  
-  # Sync dependencies
-  uv sync
-  ```
+# Create a virtual environment
+uv venv
+
+# Activate the virtual environment
+# On Windows: .venv\Scripts\activate
+# On macOS/Linux: source .venv/bin/activate
+source .venv/bin/activate 
+
+# Sync dependencies
+uv sync
+```
 
 ---
 
@@ -113,15 +107,9 @@ python src/init_database.py
 
 Then, launch the Streamlit frontend.
 
-- **On macOS or Linux (Recommended):**
-  ```bash
-  make run-frontend
-  ```
-
-- **On Windows (Manual):**
-  ```bash
-  uv run streamlit run src/infrastructure/ui/0_Home.py
-  ```
+```bash
+python -m streamlit run src/infrastructure/ui/0_Home.py --server.port 8501 --server.headless True
+```
 
 Finally, open your browser and go to **http://localhost:8501**.
 
@@ -133,7 +121,7 @@ The easiest way to run the entire stack, including the Ollama LLM for local AI, 
 
 ```bash
 # This command builds the images and starts the services.
-docker-compose up --build
+docker compose up --build
 ```
 This will start the Streamlit application and the Ollama service. You can then use a local model like `qwen2.5:0.5b` without needing an API key.
 
@@ -179,12 +167,6 @@ This project follows **Clean Architecture** principles to ensure a separation of
 
 We use `pytest` for testing.
 
-- **On macOS or Linux (Recommended):**
-  ```bash
-  make test
-  ```
-
-- **On Windows (Manual):**
-  ```bash
-  uv run pytest tests/
-  ```
+```bash
+uv run pytest tests/
+```

@@ -119,6 +119,7 @@ class SQLAlchemyParkingSpotRepository(AbstractParkingSpotRepository):
             # Update other fields if necessary
             await self.session.flush()
             await self.session.refresh(orm_spot)
+            await self.session.commit()
             return ParkingSpot(
                 id=orm_spot.id,
                 spot_number=orm_spot.spot_number,
@@ -229,6 +230,7 @@ class SQLAlchemyParkingSessionRepository(AbstractParkingSessionRepository):
         self.session.add(orm_session)
         await self.session.flush()
         await self.session.refresh(orm_session)
+        await self.session.commit()
         return ParkingSession(
             id=orm_session.id,
             vehicle_id=orm_session.vehicle_id,
@@ -278,18 +280,34 @@ class SQLAlchemyParkingSessionRepository(AbstractParkingSessionRepository):
             )
         raise ValueError(f"Parking session with ID {session.id} not found.")
 
-    async def get_active_sessions(self) -> List[ParkingSession]:
+    async def get_active_sessions(self) -> List[Dict]:
         result = await self.session.execute(
             select(ORMParkingSession).where(ORMParkingSession.exit_time.is_(None))
             .options(selectinload(ORMParkingSession.vehicle), selectinload(ORMParkingSession.parking_spot))
             .order_by(ORMParkingSession.entry_time.desc())
         )
+        sessions = result.scalars().unique().all()
+        
         return [
-            ParkingSession(
-                id=s.id, vehicle_id=s.vehicle_id, parking_spot_id=s.parking_spot_id,
-                entry_time=s.entry_time, exit_time=s.exit_time, amount_paid=s.amount_paid,
-                payment_status=s.payment_status, hourly_rate=s.hourly_rate
-            ) for s in result.scalars().all()
+            {
+                "id": s.id,
+                "vehicle_id": s.vehicle_id,
+                "parking_spot_id": s.parking_spot_id,
+                "entry_time": s.entry_time,
+                "exit_time": s.exit_time,
+                "amount_paid": s.amount_paid,
+                "payment_status": s.payment_status,
+                "hourly_rate": s.hourly_rate,
+                "vehicle": {
+                    "license_plate": s.vehicle.license_plate,
+                    "color": s.vehicle.color,
+                    "brand": s.vehicle.brand,
+                } if s.vehicle else None,
+                "parking_spot": {
+                    "spot_number": s.parking_spot.spot_number,
+                    "floor": s.parking_spot.floor,
+                } if s.parking_spot else None,
+            } for s in sessions
         ]
 
     async def get_all_sessions(self) -> List[ParkingSession]:

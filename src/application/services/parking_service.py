@@ -18,7 +18,7 @@ class ParkingService:
         self.parking_spot_repo = parking_spot_repo
         self.parking_session_repo = parking_session_repo
 
-    async def register_vehicle_entry(self, license_plate: str, color: str, brand: str, spot_type: SpotType) -> ParkingSession:
+    async def register_vehicle_entry(self, license_plate: str, color: str, brand: str, spot_type: SpotType) -> Dict:
         # Check if vehicle already in parking
         existing_session = await self.parking_session_repo.get_active_session_by_license_plate(license_plate)
         if existing_session:
@@ -55,9 +55,19 @@ class ParkingService:
         await self.parking_spot_repo.update(available_spot)
         
         logger.info(f"Vehicle {license_plate} entered at spot {available_spot.spot_number}")
-        return session
+        return {
+            "id": session.id,
+            "vehicle_id": session.vehicle_id,
+            "parking_spot_id": session.parking_spot_id,
+            "entry_time": session.entry_time,
+            "hourly_rate": session.hourly_rate,
+            "parking_spot": {
+                "spot_number": available_spot.spot_number,
+                "floor": available_spot.floor,
+            }
+        }
 
-    async def register_vehicle_exit(self, license_plate: str) -> ParkingSession:
+    async def register_vehicle_exit(self, license_plate: str) -> Dict:
         # Find active session
         session = await self.parking_session_repo.get_active_session_by_license_plate(license_plate)
         
@@ -73,7 +83,6 @@ class ParkingService:
         
         # Minimum charge for 1 hour
         duration_hours = max(1.0, duration_hours)
-        duration_hours = max(1.0, duration_hours)
         session.amount_paid = round(duration_hours * session.hourly_rate, 2)
         session.payment_status = PaymentStatus.PAID
 
@@ -86,7 +95,15 @@ class ParkingService:
         session = await self.parking_session_repo.update(session)
         
         logger.info(f"Vehicle {license_plate} exited. Amount: ${session.amount_paid}")
-        return session
+        
+        # Fetch the vehicle to get its license plate
+        vehicle = await self.vehicle_repo.get_by_id(session.vehicle_id)
+        
+        return {
+            "license_plate": vehicle.license_plate if vehicle else license_plate,
+            "duration_hours": duration_hours,
+            "amount_due": session.amount_paid
+        }
 
     async def get_parking_status(self) -> Dict:
         all_spots = await self.parking_spot_repo.get_all()
@@ -125,7 +142,7 @@ class ParkingService:
             "floors": floors
         }
 
-    async def get_active_sessions(self) -> List[ParkingSession]:
+    async def get_active_sessions(self) -> List[Dict]:
         sessions = await self.parking_session_repo.get_active_sessions()
         
         return sessions

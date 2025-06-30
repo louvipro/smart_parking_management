@@ -83,7 +83,7 @@ active_sessions = asyncio.run(get_active_sessions())
 # Calculate potential revenue
 current_time = datetime.now(timezone.utc)
 potential_revenue = sum([
-    max(1.0, (current_time - s.entry_time).total_seconds() / 3600) * s.hourly_rate
+    max(1.0, (current_time - s['entry_time']).total_seconds() / 3600) * s['hourly_rate']
     for s in active_sessions
 ]) if active_sessions else 0
 
@@ -154,7 +154,7 @@ with tab1:
                         )
                         session = asyncio.run(register_entry(vehicle_data))
                         st.success(
-                            f"✅ Vehicle {license_plate} assigned to spot {session.parking_spot.spot_number}")
+                            f"✅ Vehicle {license_plate} assigned to spot {session['parking_spot']['spot_number']}")
                         st.balloons()
                         # Force refresh to update metrics
                         st.rerun()
@@ -174,10 +174,10 @@ with tab1:
                     try:
                         exit_data = VehicleExit(license_plate=exit_license)
                         payment = asyncio.run(register_exit(exit_data))
-                        st.success(f"✅ Vehicle {payment.license_plate} exited")
+                        st.success(f"✅ Vehicle {payment['license_plate']} exited")
                         st.info(
-                            f"Duration: {payment.duration_hours:.2f} hours")
-                        st.info(f"💰 Amount Due: ${payment.amount_due:.2f}")
+                            f"Duration: {payment['duration_hours']:.2f} hours")
+                        st.info(f"💰 Amount Due: ${payment['amount_due']:.2f}")
                         # Wait a moment to show the info, then refresh
                         time.sleep(2)
                         st.rerun()
@@ -196,22 +196,22 @@ with tab2:
         current_time = datetime.now(timezone.utc)
         df_sessions = pd.DataFrame([
             {
-                "License Plate": s.vehicle.license_plate,
-                "Color": s.vehicle.color,
-                "Brand": s.vehicle.brand,
-                "Spot": s.parking_spot.spot_number,
-                "Floor": s.parking_spot.floor,
-                "Entry Time": s.entry_time.strftime("%Y-%m-%d %H:%M"),
-                "Duration (hours)": round((current_time - s.entry_time).total_seconds() / 3600, 2),
-                "Potential Revenue": f"${max(1.0, (current_time - s.entry_time).total_seconds() / 3600) * s.hourly_rate:.2f}"
+                "License Plate": s['vehicle']['license_plate'],
+                "Color": s['vehicle']['color'],
+                "Brand": s['vehicle']['brand'],
+                "Spot": s['parking_spot']['spot_number'],
+                "Floor": s['parking_spot']['floor'],
+                "Entry Time": s['entry_time'].strftime("%Y-%m-%d %H:%M"),
+                "Duration (hours)": round((current_time - s['entry_time']).total_seconds() / 3600, 2),
+                "Potential Revenue": f"${max(1.0, (current_time - s['entry_time']).total_seconds() / 3600) * s['hourly_rate']:.2f}"
             }
             for s in sessions
         ])
 
         # Calculate total potential revenue
         total_potential = sum([
-            max(1.0, (current_time - s.entry_time).total_seconds() /
-                3600) * s.hourly_rate
+            max(1.0, (current_time - s['entry_time']).total_seconds() /
+                3600) * s['hourly_rate']
             for s in sessions
         ])
 

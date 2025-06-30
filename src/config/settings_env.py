@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # LLM Configuration (for CrewAI)
     OPENAI_API_BASE: Optional[str] = Field(default="http://localhost:11434/v1", description="OpenAI API base URL")
     OPENAI_MODEL_NAME: str = Field(default="ollama/qwen2.5:0.5b", description="Model name")
+
+settings = Settings()
+print(f"DEBUG: OPENAI_MODEL_NAME loaded: {settings.OPENAI_MODEL_NAME}")
     OPENAI_API_KEY: str = Field(default="sk-111111111111111111111111111111111111111111111111", description="API key")
     ENABLE_AZURE_SEARCH: bool = Field(default=False, description="Enable Azure Search")
 
